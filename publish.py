@@ -8,8 +8,6 @@ https://esg-publisher.readthedocs.io/en/main/index.html
 
 
 import argparse
-import datetime
-import json
 import os
 import yaml
 from collections import OrderedDict
@@ -42,16 +40,12 @@ base_paths = config['paths'].split()
 dataset_paths = config['datasets'].split()
 
 
-# print(config)
-
 project = config['project']
 
 path_template = config['DRS'][project]['path']
 file_template = config['DRS'][project]['file']
 
 dataset_template = config['DRS'][project]['dataset']
-# sep = '.'
-# dataset_params = [s.strip('{').strip('}') for s in dataset_template.split(sep)]
 
 
 datasets = {}
@@ -60,20 +54,8 @@ for base_path in base_paths:
         d = find_datasets(base_path, dataset_path, dataset_template, path_template)
         datasets.update(d)
         del d
-# for dataset_id, info in datasets.items():
-#     print(dataset_id, info['path'])
 
 print(f'Found {len(datasets)} datasets')
-
-# if filters:
-#     assert isinstance(filters, list)
-#     assert all([isinstance(d,dict) for d in filters])
-#     keep = set()
-#     for dataset_id, info in datasets.items():
-#         params = info['params']
-#         if any([match_params(params, filt) for filt in filters]):
-#             keep.add(dataset_id)
-#     datasets = {s: datasets[s] for s in keep}
 
 filter = config['keep']
 if filter:
@@ -90,6 +72,8 @@ datasets = OrderedDict({s : datasets[s] for s in sorted(datasets.keys(), key=str
 
 
 # check stamp of approval
+
+
 
 
 del config
