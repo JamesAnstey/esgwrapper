@@ -158,22 +158,38 @@ if args.datasets:
             for var_key in sorted(not_approved, key=str.lower):
                 print('  ' + var_key)
 
-
-
     datasets = OrderedDict({s : datasets[s] for s in sorted(datasets.keys(), key=str.lower)})
+
+    out = OrderedDict({
+        'Header' : {
+
+        },
+        'datasets' : datasets
+    })
+    filepath = 'datasets.json'
+    with open(filepath, 'w') as f:
+        json.dump(out, f, indent=4)
+        print('Wrote ' + filepath)
 
 del config
 ##############################################################################
 # The datasets to publish have been determined. 
 # Now carry out publishing commands.
 
-# Load configuration settings
-config_file = os.path.join(repo_path, 'config-publisher.yaml')
-if not os.path.exists(config_file):
-    raise OSError('Config file not found: ' + config_file)
-with open(config_file) as f:
-    config = yaml.safe_load(f)
+if args.mapfile or args.publish:
 
+    # Load configuration settings
+    config_file = os.path.join(repo_path, 'config-publisher.yaml')
+    if not os.path.exists(config_file):
+        raise OSError('Config file not found: ' + config_file)
+    with open(config_file) as f:
+        config = yaml.safe_load(f)
+
+    # Load info on datasets
+    filepath = 'datasets.json'
+    with open(filepath, 'r') as f:
+        datasets = json.load(f)['datasets']
+        print('Loaded ' + filepath)
 
 if args.mapfile:
     # generate mapfiles
