@@ -14,6 +14,7 @@ keep:
 paths:
   /space/hall5/sitestore/eccc/crd/ccrn/model_output/CMIP6/final/
 
+repo_path : /home/rja001/code/esgwrapper
 
 validation_info : input/validation_variables.json
 

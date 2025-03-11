@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser(
     description='Publish CCCma datasets to ESGF'
     )
 parser.add_argument('-c', '--config', type=str, default='config-datasets.yaml',
-                    help='name of config file containing datasets to publish, default: %(default)s')
+                    help='name of config file (in current directory) containing datasets to publish, default: %(default)s')
 parser.add_argument('-m', '--mapfile', action='store_true', default=False,
                     help='generate mapfiles')
 parser.add_argument('-p', '--publish', action='store_true', default=False,
@@ -32,7 +32,7 @@ parser.add_argument('--dry-run', action='store_true', default=False,
 args = parser.parse_args()
 
 
-# Load dataset configuration settings
+# Load dataset configuration settings from config file in current dir
 config_file = args.config
 if not os.path.exists(config_file):
     raise OSError('Config file not found: ' + config_file)
@@ -42,11 +42,14 @@ with open(config_file) as f:
 base_paths = config['paths'].split()
 dataset_paths = config['datasets'].split()
 
+repo_path = config['repo_path']
+if not os.path.exists(repo_path):
+    raise ValueError('Path to esgwrapper code repo is required, received: ' + repo_path)
 
 project = config['project']
 
 path_template = config['DRS'][project]['path']
-file_template = config['DRS'][project]['file']
+# file_template = config['DRS'][project]['file']
 
 dataset_template = config['DRS'][project]['dataset']
 
@@ -71,9 +74,9 @@ if filter:
 
 print(f'Retained {len(datasets)} datasets')
 
-# Check stamp of approval
+# Check stamp of approval and any other validation criteria
 if not args.no_validation:
-    filepath = 'input/validation_variables.json'
+    filepath = os.path.join(repo_path, 'input/validation_variables.json')
     with open(filepath, 'r') as f:
         validation_vars = json.load(f)['variables']
         print('Loaded ' + filepath)
@@ -137,6 +140,8 @@ if not args.no_validation:
         for var_key in sorted(not_approved, key=str.lower):
             print('  ' + var_key)
 
+
+
 datasets = OrderedDict({s : datasets[s] for s in sorted(datasets.keys(), key=str.lower)})
 
 
@@ -147,7 +152,7 @@ del config
 # Now carry out publishing commands.
 
 # Load configuration settings
-config_file = 'config-publisher.yaml'
+config_file = os.path.join(repo_path, 'config-publisher.yaml')
 if not os.path.exists(config_file):
     raise OSError('Config file not found: ' + config_file)
 with open(config_file) as f:
@@ -216,7 +221,5 @@ if args.publish:
         if not os.path.exists(d['mapfile']):
             print('Mapfile not found: ' + d['mapfile'])
             continue
-
-
 
 
