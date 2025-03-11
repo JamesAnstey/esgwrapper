@@ -15,3 +15,7 @@ Workflow:
 
 Note, the envs for mapfile generation & publishing are different
 
+Calling without args, it will check the available datasets. Useful to check what can be published.
+
+Add check of already-published datasets (using search_esgf).
+

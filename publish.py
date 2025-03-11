@@ -89,6 +89,14 @@ if not args.no_validation:
     check = []
     check.append('Stamp of Approval')
 
+    # 11mar.25 
+    # the following are probably obselete checks that should be removed
+    # including them to see if they raise any errors
+    # (they were included in publisher.py in the old publish_esgf code)
+    check.append('vegtype')
+    check.append('frequency')
+
+
     var_info_key = '{table_id}.{variable_id}'
     keep = set()
     for dataset_id, info in datasets.items():
@@ -99,16 +107,35 @@ if not args.no_validation:
         var_info = validation_vars[var_key]
 
         # Do the checks for each dataset
+        not_approved = set()
         for p in check:
             if p == 'Stamp of Approval':
                 if var_info[p].lower().strip() in ['x']:
                     keep.add(dataset_id)
+                else:
+                    not_approved.add(var_key)
+
+            elif p == 'vegtype':
+                if 'vegtype' in var_info['dimensions']:
+                    raise ValueError('Can we publish this? (obselete check?)')
+
+            elif p == 'frequency':
+                table_id = var_info['CMOR table']
+                ok_freqs = ['day', 'mon', 'fx', 'yr', '3hr', '6hr']
+                if not any([freq in table_id for freq in ok_freqs]):
+                    raise ValueError('Invalid frequency? table_id = ' + table_id)
+
             else:
                 raise ValueError('Unknown check: ' + p)
 
     datasets = {s: datasets[s] for s in keep}
-    print(f'Retained {len(datasets)} datasets after these validation checks: ' + ', '.join(check))
-
+    print(f'Retained {len(datasets)} datasets after these validation checks: ')
+    for p in check:
+        print('  ' + p)
+    if len(not_approved) > 0:
+        print(f'Discarded {len(not_approved)} variables because no Stamp of Approval:')
+        for var_key in sorted(not_approved, key=str.lower):
+            print('  ' + var_key)
 
 datasets = OrderedDict({s : datasets[s] for s in sorted(datasets.keys(), key=str.lower)})
 
