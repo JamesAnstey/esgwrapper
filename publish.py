@@ -8,6 +8,7 @@ https://esg-publisher.readthedocs.io/en/main/index.html
 
 
 import argparse
+import json
 import os
 import yaml
 from collections import OrderedDict
@@ -24,6 +25,8 @@ parser.add_argument('-m', '--mapfile', action='store_true', default=False,
                     help='generate mapfiles')
 parser.add_argument('-p', '--publish', action='store_true', default=False,
                     help='publish to ESGF')
+parser.add_argument('-nv', '--no-validation', action='store_true', default=False,
+                    help='turn off checking of validation list (Stamp of Approval)')
 parser.add_argument('--dry-run', action='store_true', default=False,
                     help='show commands but don\'t execute them')
 args = parser.parse_args()
@@ -68,11 +71,46 @@ if filter:
 
 print(f'Retained {len(datasets)} datasets')
 
+# Check stamp of approval
+if not args.no_validation:
+    filepath = 'input/validation_variables.json'
+    with open(filepath, 'r') as f:
+        validation_vars = json.load(f)['variables']
+        print('Loaded ' + filepath)
+    # sanitize
+    re_key = {'Stamp of\nApproval' : 'Stamp of Approval'}
+    for var_info in validation_vars.values():
+        for old,new in re_key.items():
+            if old in var_info:
+                assert new not in var_info, 'existing key: ' + new
+                var_info[new] = var_info[old]
+                var_info.pop(old)
+
+    check = []
+    check.append('Stamp of Approval')
+
+    var_info_key = '{table_id}.{variable_id}'
+    keep = set()
+    for dataset_id, info in datasets.items():
+
+        var_key = var_info_key.format(**info['params'])
+        if var_key not in validation_vars:
+            raise ValueError(f'Variable not found in {filepath}: {var_key}')
+        var_info = validation_vars[var_key]
+
+        # Do the checks for each dataset
+        for p in check:
+            if p == 'Stamp of Approval':
+                if var_info[p].lower().strip() in ['x']:
+                    keep.add(dataset_id)
+            else:
+                raise ValueError('Unknown check: ' + p)
+
+    datasets = {s: datasets[s] for s in keep}
+    print(f'Retained {len(datasets)} datasets after these validation checks: ' + ', '.join(check))
+
+
 datasets = OrderedDict({s : datasets[s] for s in sorted(datasets.keys(), key=str.lower)})
-
-
-# check stamp of approval
-
 
 
 
