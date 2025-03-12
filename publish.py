@@ -6,6 +6,7 @@ https://esg-publisher.readthedocs.io/en/main/index.html
 
 '''
 import argparse
+import datetime
 import json
 import os
 import sys
@@ -74,6 +75,8 @@ if args.datasets:
 
     datasets = {}
     for base_path in base_paths:
+        if not os.path.exists(base_path):
+            print('Path not found: ' + base_path)
         for dataset_path in dataset_paths:
             d = find_datasets(base_path, dataset_path, dataset_template, path_template)
             datasets.update(d)
@@ -158,12 +161,23 @@ if args.datasets:
             for var_key in sorted(not_approved, key=str.lower):
                 print('  ' + var_key)
 
+
     datasets = OrderedDict({s : datasets[s] for s in sorted(datasets.keys(), key=str.lower)})
+
+    dataset_sep = '.'
+    dataset_parameters = [s.strip('{').strip('}') for s in dataset_template.split(dataset_sep)]
+    param_unique_values = OrderedDict()
+    for p in dataset_parameters:
+        param_unique_values[p] = sorted(set([d['params'][p] for d in datasets.values()]), key=str.lower)
+        print(f'  {p} : ' + ', '.join(param_unique_values[p]))
 
     out = OrderedDict({
         'Header' : {
-
-        },
+            'date' : datetime.datetime.now().strftime('%d %b %Y'),
+            'top-level paths' : base_paths,
+            'no. of datasets' : len(datasets),
+            'unique parameter values' : param_unique_values,
+       },
         'datasets' : datasets
     })
     filepath = 'datasets.json'

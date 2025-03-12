@@ -29,3 +29,4 @@ elif args.action == 'get':
 for cmd in cmds:
     print(cmd)
     os.system(cmd)
+

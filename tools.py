@@ -28,7 +28,7 @@ def find_datasets(base_path, dataset_path, dataset_template, path_template):
     datasets = {}
 
     path = os.path.join(base_path, dataset_path)
-    for (dirpath, dirnames, filenames) in os.walk(path, followlinks=True):
+    for (dirpath, dirnames, filenames) in os.walk(path, followlinks=False):
         relpath = os.path.relpath(dirpath, base_path)
         param_values_from_path =  relpath.split(path_sep)
         params = {p:v for p,v in zip(path_params, param_values_from_path)}
