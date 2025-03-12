@@ -2,6 +2,7 @@
 
 import json
 import os
+from collections import OrderedDict
 
 
 def match_params(params, reference):
@@ -17,6 +18,7 @@ def match_params(params, reference):
             assert all( [isinstance(v, str) for v in values] )
             keep = keep and ( params[p] in values )
     return keep
+
 
 def find_datasets(base_path, dataset_path, dataset_template, path_template):
 
@@ -41,6 +43,14 @@ def find_datasets(base_path, dataset_path, dataset_template, path_template):
             }
 
     return datasets
+
+
+def get_unique_param_values(datasets, dataset_parameters):
+    param_unique_values = OrderedDict()
+    for p in dataset_parameters:
+        param_unique_values[p] = sorted(set([d['params'][p] for d in datasets.values()]), key=str.lower)
+    return param_unique_values
+
 
 def publication_checks(datasets, validation_file):
 

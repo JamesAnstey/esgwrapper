@@ -14,7 +14,8 @@ import sys
 import yaml
 from collections import OrderedDict
 
-from tools import find_datasets, match_params, publication_checks
+from tools import find_datasets, get_unique_param_values, match_params, publication_checks
+from esgfsearch import search
 
 ##############################################################################
 
@@ -49,6 +50,8 @@ parser.add_argument('-nv', '--no-validation', action='store_true', default=False
                     help='turn off checking of validation list (Stamp of Approval)')
 parser.add_argument('-dr', '--dry-run', action='store_true', default=False,
                     help='show commands but don\'t execute them')
+parser.add_argument('-nes', '--no-esgf-search', action='store_true', default=False,
+                    help='turn off ESGF search that checks whether datasets are already published')
 args = parser.parse_args()
 
 if not any([args.__dict__[action] for action in actions]):
@@ -125,22 +128,42 @@ if args.datasets:
 
     print(f'Retained {len(datasets)} datasets')
 
-    # Check stamp of approval and any other validation criteria
     if not args.no_validation:
+        # Check stamp of approval and any other validation criteria
         validation_file = os.path.join(repo_path, 'input/validation_variables.json')
         datasets = publication_checks(datasets, validation_file)
 
-
-    datasets = OrderedDict({s : datasets[s] for s in sorted(datasets.keys(), key=str.lower)})
-
     dataset_sep = '.'
     dataset_parameters = [s.strip('{').strip('}') for s in dataset_template.split(dataset_sep)]
-    param_unique_values = OrderedDict()
-    print('Unique parameter values:')
-    for p in dataset_parameters:
-        param_unique_values[p] = sorted(set([d['params'][p] for d in datasets.values()]), key=str.lower)
-        print(f'  {p} : ' + ', '.join(param_unique_values[p]))
+    param_unique_values = get_unique_param_values(datasets, dataset_parameters)
 
+    if not args.no_esgf_search:
+        # Check which datasets are already published
+        index_node = config_pub['search_esgf']['index_node']
+        print(f'Checking for already published datasets by searching {index_node}')
+
+        published_datasets = search(param_unique_values, dataset_parameters, project, index_node,
+                                    verbose=config_pub['search_esgf']['verbose'],
+                                    show_browser_url=config_pub['search_esgf']['show_browser_url'],
+                                    keep_params=None,
+                                    )
+
+        keep = set(datasets.keys()).difference(set(published_datasets))
+        n = len(datasets)
+        datasets = {s: datasets[s] for s in keep}
+        if len(datasets) == n:
+            print('None of the datasets are already published')
+        elif len(datasets) == 0:
+            print('All of the datasets are already published')
+        else:
+            print(f'Removed {n-len(datasets)} already-published datasets from publishing list')
+
+    datasets = OrderedDict({s : datasets[s] for s in sorted(datasets.keys(), key=str.lower)})
+    param_unique_values = get_unique_param_values(datasets, dataset_parameters)
+    if any([len(vals) > 0 for vals in param_unique_values.values()]):
+        print('Unique parameter values:')
+        for p in dataset_parameters:
+            print(f'  {p} : ' + ', '.join(param_unique_values[p]))
     out = OrderedDict({
         'Header' : {
             'date' : datetime.datetime.now().strftime('%d %b %Y'),
@@ -208,7 +231,7 @@ if args.mapfile:
             cmds.append( cmd.format(**d) )
 
         for cmd in cmds:
-            print(cmd)
+            print('\n' + cmd)
             if do_cmds:
                 os.system(cmd)
 
@@ -242,7 +265,7 @@ if args.publish:
             cmds.append( cmd.format(**d) )
 
         for cmd in cmds:
-            print(cmd)
+            print('\n' + cmd)
             if do_cmds:
                 os.system(cmd)
 

@@ -14,6 +14,11 @@ publish:
     'esgpublish --map {mapfile} -cfg /home/acrnpub/.esg/esg.yaml --no-auth',
   ]
 
+search_esgf: 
+  index_node: esgf-node.llnl.gov
+  verbose: False
+  show_browser_url: False
+
 DRS:
   cmip6:
     dataset : '{project}.{activity_id}.{institution_id}.{source_id}.{experiment_id}.{member_id}.{table_id}.{variable_id}.{grid_label}.{version}'
