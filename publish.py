@@ -17,6 +17,9 @@ from collections import OrderedDict
 from tools import find_datasets, match_params, publication_checks
 
 ##############################################################################
+
+datasets_file = 'datasets.json'
+
 parser = argparse.ArgumentParser(
     description='Publish CCCma datasets to ESGF'
     )
@@ -26,7 +29,7 @@ parser.add_argument('-c', '--config', type=str, default='config-datasets.yaml',
 actions = OrderedDict({
     'datasets' : {
         'short' : '-d', 
-        'help' : 'find datasets to publish and write info on them to datasets.json'
+        'help' : f'find datasets to publish and write info on them to {datasets_file}'
     },
     'mapfile' : {
         'short' : '-m',
@@ -42,7 +45,7 @@ for action, d in actions.items():
 # Additional arguments
 parser.add_argument('-nv', '--no-validation', action='store_true', default=False,
                     help='turn off checking of validation list (Stamp of Approval)')
-parser.add_argument('--dry-run', action='store_true', default=False,
+parser.add_argument('-dr', '--dry-run', action='store_true', default=False,
                     help='show commands but don\'t execute them')
 args = parser.parse_args()
 
@@ -75,7 +78,7 @@ with open(config_file) as f:
 
 ##############################################################################
 if args.datasets:
-    # Determine datasets to publish, write them to datasets.json
+    # Determine datasets to publish, write them to datasets_file
 
     base_paths = config['paths'].split()  # top-level paths to search at
     dataset_paths = config['datasets'].split()  # datasets to search (dir path for some level in the DRS dir tree)
@@ -135,7 +138,7 @@ if args.datasets:
        },
         'datasets' : datasets
     })
-    filepath = 'datasets.json'
+    filepath = datasets_file
     with open(filepath, 'w') as f:
         json.dump(out, f, indent=4)
         print(f'Wrote {filepath} with {len(datasets)} datasets')
@@ -146,27 +149,33 @@ del config
 if args.mapfile or args.publish:
 
     # Load info on datasets
-    filepath = 'datasets.json'
+    filepath = datasets_file
     with open(filepath, 'r') as f:
         datasets = json.load(f)['datasets']
         print('Loaded ' + filepath)
+
+    do_cmds = not args.dry_run
 
 ##############################################################################
 if args.mapfile:
     # Generate mapfiles
     # These are small files containing info about each dataset to publish, such as its checksum
 
-
-    env = config_pub['mapfile']['env']
-
     # check that correct env is active
- 
-
+    env = config_pub['mapfile']['env']
+    if do_cmds and os.environ['CONDA_DEFAULT_ENV'] != env:
+        raise OSError('To run commands, first do:\n  ' + env)
 
     mapfile_path_template = config_pub['mapfile']['mapfile_subdir']
     mapfile_base_path = config_pub['mapfile']['mapfile_dir']
     if not os.path.exists(mapfile_base_path):
         os.makedirs(mapfile_base_path)
+
+    # Example mapfile name:
+    #   CMIP6.DCPP.CCCma.CanESM5.dcppB-forecast.s2022-r1i1p2f1.Amon.tas.gn.v20190429.map
+    # It seems to follow the dataset template.
+    dataset_template = config_pub['DRS'][project]['dataset']
+    mapfile_template = dataset_template + os.path.extsep + 'map'
 
     commands = config_pub['mapfile']['commands']
     for dataset_id, info in datasets.items():
@@ -175,12 +184,20 @@ if args.mapfile:
             'dataset_path' : info['path'],
             'project' : project,
         }
-        do_cmds = []
-        for cmd in commands:
-            do_cmds.append( cmd.format(**d) )
+        if not config_pub['mapfile']['clobber']:
+            filename = mapfile_template.format(**info['params'])
+            filepath = os.path.join(d['mapfile_path'], filename)
+            if os.path.exists(filepath):
+                print('Not overwriting existing mapfile: ' + filepath)
 
-        for cmd in do_cmds:
+        cmds = []
+        for cmd in commands:
+            cmds.append( cmd.format(**d) )
+
+        for cmd in cmds:
             print(cmd)
+            if do_cmds:
+                os.system(cmd)
 
 
 ##############################################################################
@@ -188,10 +205,10 @@ if args.publish:
     # Publish to ESGF
     # (This assumes that mapfiles have already been generated)
 
-    env = config_pub['publish']['env']
-
     # check that correct env is active
- 
+    env = config_pub['publish']['env']
+    if do_cmds and os.environ['CONDA_DEFAULT_ENV'] != env:
+        raise OSError('To run commands, first do:\n  ' + env)
 
     mapfile_path_template = config_pub['mapfile']['mapfile_subdir']
     mapfile_base_path = config_pub['mapfile']['mapfile_dir']
@@ -203,17 +220,16 @@ if args.publish:
         d = {
             'mapfile' : os.path.join(mapfile_path, mapfile)
         }
-
-        do_cmds = []
-        for cmd in commands:
-            do_cmds.append( cmd.format(**d) )
-
-
-        for cmd in do_cmds:
-            print(cmd)
-
         if not os.path.exists(d['mapfile']):
             print('Mapfile not found: ' + d['mapfile'])
             continue
 
+        cmds = []
+        for cmd in commands:
+            cmds.append( cmd.format(**d) )
+
+        for cmd in cmds:
+            print(cmd)
+            if do_cmds:
+                os.system(cmd)
 

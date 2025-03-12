@@ -108,3 +108,4 @@ def publication_checks(datasets, validation_file):
             print('  ' + var_key)
 
     return datasets
+
