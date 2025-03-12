@@ -159,6 +159,7 @@ def search(params,
 
     assert limit > 0 and limit <= 10000, 'Set "limit" to a positive integer not greater than 10000'
     offset = 0
+    l_search = []
     keep_searching = True
     first_search = True
     n_search = 0
@@ -276,7 +277,7 @@ def search(params,
                 },
             'results' : d_json,
         }
-        # l_search += [d_search]
+        l_search += [d_search]
         
         if num_docs < limit:
             keep_searching = False
@@ -288,54 +289,53 @@ def search(params,
     if verbose:
         print('Time taken for search: {0} s'.format('%.3g' % t_search))
 
-    # print(d_json['response'].keys())
-    # print(d_json['response']['numFound'])
-
     d_found = {}
     d_query = {}
 
-    dr = d_search['results']
-    docs = dr['response']['docs']
-    for doc in docs:
-        # Create dict of parameters defining the dataset
-        params = {}
-        for p in dataset_parameters:
-            if isinstance(doc[p], (list,tuple)):
-                assert len(doc[p]) == 1
-                params[p] = doc[p][0]
-            else:
-                params[p] = doc[p]
-            if p in ['version']:
-                if project in ['cmip6']:
-                    params[p] = 'v' + params[p]
+    for d_search in l_search:
+
+        dr = d_search['results']
+        docs = dr['response']['docs']
+        for doc in docs:
+            # Create dict of parameters defining the dataset
+            params = {}
+            for p in dataset_parameters:
+                if isinstance(doc[p], (list,tuple)):
+                    assert len(doc[p]) == 1
+                    params[p] = doc[p][0]
                 else:
-                    raise ValueError('Unknown project: ' + project)
+                    params[p] = doc[p]
+                if p in ['version']:
+                    if project in ['cmip6']:
+                        params[p] = 'v' + params[p]
+                    else:
+                        raise ValueError('Unknown project: ' + project)
 
-        # Use this dict to create the dataset id string
-        dataset = SEP_DATASET.join([params[p] for p in dataset_parameters])
+            # Use this dict to create the dataset id string
+            dataset = SEP_DATASET.join([params[p] for p in dataset_parameters])
 
-        # Validate the dataset id string
-        assert dataset == doc['instance_id']
+            # Validate the dataset id string
+            assert dataset == doc['instance_id']
 
-        if keep_params != 'all':
-            # Retain only requested parameters in doc dict
-            keep_params1 = [p for p in keep_params_user if p in doc]
-            doc = {p : doc[p] for p in keep_params1}
+            if keep_params != 'all':
+                # Retain only requested parameters in doc dict
+                keep_params1 = [p for p in keep_params_user if p in doc]
+                doc = {p : doc[p] for p in keep_params1}
 
-        doc.setdefault('replica', False) # ensure replica flag is set
+            doc.setdefault('replica', False) # ensure replica flag is set
 
-        if dataset not in d_found:
-            d_found[dataset] = {
-                'doc'       : [],
-                'params'    : params,
-            }
-            d_query[dataset] = []
-        else:
-            # If already found an instance of this dataset, ensure its parameters are consistent with the new one found
-            assert d_found[dataset]['params'] == params
+            if dataset not in d_found:
+                d_found[dataset] = {
+                    'doc'       : [],
+                    'params'    : params,
+                }
+                d_query[dataset] = []
+            else:
+                # If already found an instance of this dataset, ensure its parameters are consistent with the new one found
+                assert d_found[dataset]['params'] == params
 
-        d_found[dataset]['doc'].append(doc)
-        d_query[dataset].append(d_search['search'])
+            d_found[dataset]['doc'].append(doc)
+            d_query[dataset].append(d_search['search'])
 
     # TO DO:
     #   what is d_query for?
