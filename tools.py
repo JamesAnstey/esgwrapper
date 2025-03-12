@@ -69,6 +69,7 @@ def publication_checks(datasets, validation_file):
 
     var_info_key = '{table_id}.{variable_id}'
     keep = set()
+    not_approved = set()
     for dataset_id, info in datasets.items():
 
         var_key = var_info_key.format(**info['params'])
@@ -77,7 +78,6 @@ def publication_checks(datasets, validation_file):
         var_info = validation_vars[var_key]
 
         # Do the checks for each dataset
-        not_approved = set()
         for p in check:
             if p == 'Stamp of Approval':
                 if var_info[p].lower().strip() in ['x']:

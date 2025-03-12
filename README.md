@@ -1,9 +1,11 @@
 
 Workflow:
 
-- clone repo and copy it to the ESGF server
+- copy code to the ESGF server using `server_sync.py send`
 
 - ssh to the ESGF server 
+
+- `source setup.py` in repo dir
 
 - create a working dir
 

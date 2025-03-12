@@ -8,23 +8,12 @@ datasets:
 
 
 keep: 
+  variable_id : [tas, tasmax, tasmin]
 #  experiment_id : dcppB-forecast
-#  variable_id : ['tas', 'tasmax']
 #  table_id : [Amon, SImon]
 
 paths:
   /esgH/data/AR6/
   /space/hall5/sitestore/eccc/crd/ccrn/model_output/CMIP6/final/
-
-repo_path : /home/rja001/code/esgwrapper
-#repo_path : /esg/publish/esgwrapper
-
-validation_info : input/validation_variables.json
-
-DRS:
-  cmip6:
-    dataset : '{project}.{activity_id}.{institution_id}.{source_id}.{experiment_id}.{member_id}.{table_id}.{variable_id}.{grid_label}.{version}'
-    path :    '{project}/{activity_id}/{institution_id}/{source_id}/{experiment_id}/{member_id}/{table_id}/{variable_id}/{grid_label}/{version}'
-#    file :    '{variable_id}_{table_id}_{source_id}_{experiment_id}_{member_id}_{grid_label}_{time_subset}.nc'
 
 

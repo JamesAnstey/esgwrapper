@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 '''
 Thin wrapper around ESGF publishing software.
+Use to publish CCCma datasets to ESGF.
 
 https://esg-publisher.readthedocs.io/en/main/index.html
 
@@ -15,7 +16,7 @@ from collections import OrderedDict
 
 from tools import find_datasets, match_params, publication_checks
 
-
+##############################################################################
 parser = argparse.ArgumentParser(
     description='Publish CCCma datasets to ESGF'
     )
@@ -51,6 +52,7 @@ if not any([args.__dict__[action] for action in actions]):
         print(f'  {d["short"]}, --{action}')
     sys.exit()
 
+##############################################################################
 # Load dataset configuration settings from config file
 config_file = args.config
 if not os.path.exists(config_file):
@@ -58,25 +60,36 @@ if not os.path.exists(config_file):
 with open(config_file) as f:
     config = yaml.safe_load(f)
 
-repo_path = config['repo_path']
+repo_path = os.environ['REPO_PATH']
 if not os.path.exists(repo_path):
     raise ValueError('Path to esgwrapper code repo is required, received: ' + repo_path)
 
 project = config['project']
 
+# Load configuration settings for publishing commands
+config_file = os.path.join(repo_path, 'config-publisher.yaml')
+if not os.path.exists(config_file):
+    raise OSError('Config file not found: ' + config_file)
+with open(config_file) as f:
+    config_pub = yaml.safe_load(f)
+
+##############################################################################
 if args.datasets:
+    # Determine datasets to publish, write them to datasets.json
 
     base_paths = config['paths'].split()  # top-level paths to search at
     dataset_paths = config['datasets'].split()  # datasets to search (dir path for some level in the DRS dir tree)
 
-    dataset_template = config['DRS'][project]['dataset']
-    path_template = config['DRS'][project]['path']
-    # file_template = config['DRS'][project]['file']
+    dataset_template = config_pub['DRS'][project]['dataset']
+    path_template = config_pub['DRS'][project]['path']
+    # file_template = config_pub['DRS'][project]['file']
 
     datasets = {}
+    searched_base_paths = []
     for base_path in base_paths:
         if os.path.exists(base_path):
             print('Searching path: ' + base_path)
+            searched_base_paths.append(base_path)
         else:
             print('Path not found: ' + base_path)
         for dataset_path in dataset_paths:
@@ -116,7 +129,7 @@ if args.datasets:
     out = OrderedDict({
         'Header' : {
             'date' : datetime.datetime.now().strftime('%d %b %Y'),
-            'top-level paths' : base_paths,
+            'paths searched' : searched_base_paths,
             'no. of datasets' : len(datasets),
             'unique parameter values' : param_unique_values,
        },
@@ -128,18 +141,9 @@ if args.datasets:
         print(f'Wrote {filepath} with {len(datasets)} datasets')
 
 del config
+
 ##############################################################################
-# The datasets to publish have been determined. 
-# Now carry out publishing commands.
-
 if args.mapfile or args.publish:
-
-    # Load configuration settings
-    config_file = os.path.join(repo_path, 'config-publisher.yaml')
-    if not os.path.exists(config_file):
-        raise OSError('Config file not found: ' + config_file)
-    with open(config_file) as f:
-        config = yaml.safe_load(f)
 
     # Load info on datasets
     filepath = 'datasets.json'
@@ -147,23 +151,24 @@ if args.mapfile or args.publish:
         datasets = json.load(f)['datasets']
         print('Loaded ' + filepath)
 
+##############################################################################
 if args.mapfile:
-    # generate mapfiles
-    # these are small files containing info about each dataset to publish, such as its checksum
+    # Generate mapfiles
+    # These are small files containing info about each dataset to publish, such as its checksum
 
 
-    env = config['mapfile']['env']
+    env = config_pub['mapfile']['env']
 
     # check that correct env is active
  
 
 
-    mapfile_path_template = config['mapfile']['mapfile_subdir']
-    mapfile_base_path = config['mapfile']['mapfile_dir']
+    mapfile_path_template = config_pub['mapfile']['mapfile_subdir']
+    mapfile_base_path = config_pub['mapfile']['mapfile_dir']
     if not os.path.exists(mapfile_base_path):
         os.makedirs(mapfile_base_path)
 
-    commands = config['mapfile']['commands']
+    commands = config_pub['mapfile']['commands']
     for dataset_id, info in datasets.items():
         d = {
             'mapfile_path' : os.path.join(mapfile_base_path, mapfile_path_template.format(**info['params'])),
@@ -178,19 +183,20 @@ if args.mapfile:
             print(cmd)
 
 
+##############################################################################
 if args.publish:
-    # publish to ESGF
-    # this assumes that mapfiles have already been generated
+    # Publish to ESGF
+    # (This assumes that mapfiles have already been generated)
 
-    env = config['publish']['env']
+    env = config_pub['publish']['env']
 
     # check that correct env is active
  
 
-    mapfile_path_template = config['mapfile']['mapfile_subdir']
-    mapfile_base_path = config['mapfile']['mapfile_dir']
+    mapfile_path_template = config_pub['mapfile']['mapfile_subdir']
+    mapfile_base_path = config_pub['mapfile']['mapfile_dir']
 
-    commands = config['publish']['commands']
+    commands = config_pub['publish']['commands']
     for dataset_id, info in datasets.items():
         mapfile_path = os.path.join(mapfile_base_path, mapfile_path_template.format(**info['params']))
         mapfile = dataset_id + os.path.extsep + 'map'
