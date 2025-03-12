@@ -115,6 +115,13 @@ if args.datasets:
                 keep.add(dataset_id)
         datasets = {s: datasets[s] for s in keep}
 
+    filter = config['exclude']
+    if filter:
+        keep = set()
+        for dataset_id, info in datasets.items():
+            if not match_params(info['params'], filter):
+                keep.add(dataset_id)
+        datasets = {s: datasets[s] for s in keep}
 
     print(f'Retained {len(datasets)} datasets')
 

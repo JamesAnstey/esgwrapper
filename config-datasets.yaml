@@ -8,9 +8,12 @@ datasets:
 
 
 keep: 
-  variable_id : [tas, tasmax, tasmin]
+#  variable_id : [tas, tasmax, tasmin]
 #  experiment_id : dcppB-forecast
 #  table_id : [Amon, SImon]
+
+exclude:
+  variable_id : [tas, tasmax, tasmin]
 
 paths:
   /esgH/data/AR6/
