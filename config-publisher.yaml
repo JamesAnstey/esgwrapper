@@ -1,6 +1,6 @@
 
 mapfile:
-  env: conda activate esgf-prep
+  conda env: esgf-prep
   commands: [
     'esgmapfile make -i /datalocal/config/esgcet/ --project {project} {dataset_path} --outdir {mapfile_path}'
   ]
@@ -9,9 +9,9 @@ mapfile:
   clobber: False
 
 publish:
-  env: conda activate esgf-pub524
+  conda env: esgf-pub524
   commands: [
-    'esgpublish --map {mapfile} -cfg /home/acrnpub/.esg/esg.yaml',
+    'esgpublish --map {mapfile} -cfg /home/acrnpub/.esg/esg.yaml --no-auth',
   ]
 
 DRS:

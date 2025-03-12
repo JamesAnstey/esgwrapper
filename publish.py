@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 '''
 Thin wrapper around ESGF publishing software.
 Use to publish CCCma datasets to ESGF.
@@ -29,7 +29,7 @@ parser.add_argument('-c', '--config', type=str, default='config-datasets.yaml',
 actions = OrderedDict({
     'datasets' : {
         'short' : '-d', 
-        'help' : f'find datasets to publish and write info on them to {datasets_file}'
+        'help' : 'find datasets to publish and write info on them to ' + datasets_file
     },
     'mapfile' : {
         'short' : '-m',
@@ -43,6 +43,8 @@ actions = OrderedDict({
 for action, d in actions.items():
     parser.add_argument(d['short'], f'--{action}', action='store_true', default=False, help=d['help'])
 # Additional arguments
+parser.add_argument('-df', '--datasets-file', type=str, default=datasets_file,
+                    help='name of datasets output json file')
 parser.add_argument('-nv', '--no-validation', action='store_true', default=False,
                     help='turn off checking of validation list (Stamp of Approval)')
 parser.add_argument('-dr', '--dry-run', action='store_true', default=False,
@@ -54,6 +56,9 @@ if not any([args.__dict__[action] for action in actions]):
     for action, d in actions.items():
         print(f'  {d["short"]}, --{action}')
     sys.exit()
+
+if args.datasets_file:
+    datasets_file = args.datasets_file
 
 ##############################################################################
 # Load dataset configuration settings from config file
@@ -162,9 +167,9 @@ if args.mapfile:
     # These are small files containing info about each dataset to publish, such as its checksum
 
     # check that correct env is active
-    env = config_pub['mapfile']['env']
+    env = config_pub['mapfile']['conda env']
     if do_cmds and os.environ['CONDA_DEFAULT_ENV'] != env:
-        raise OSError('To run commands, first do:\n  ' + env)
+        raise OSError('To run commands, first do:\n  conda activate ' + env)
 
     mapfile_path_template = config_pub['mapfile']['mapfile_subdir']
     mapfile_base_path = config_pub['mapfile']['mapfile_dir']
@@ -189,6 +194,7 @@ if args.mapfile:
             filepath = os.path.join(d['mapfile_path'], filename)
             if os.path.exists(filepath):
                 print('Not overwriting existing mapfile: ' + filepath)
+                continue
 
         cmds = []
         for cmd in commands:
@@ -206,9 +212,9 @@ if args.publish:
     # (This assumes that mapfiles have already been generated)
 
     # check that correct env is active
-    env = config_pub['publish']['env']
+    env = config_pub['publish']['conda env']
     if do_cmds and os.environ['CONDA_DEFAULT_ENV'] != env:
-        raise OSError('To run commands, first do:\n  ' + env)
+        raise OSError('To run commands, first do:\n  conda activate ' + env)
 
     mapfile_path_template = config_pub['mapfile']['mapfile_subdir']
     mapfile_base_path = config_pub['mapfile']['mapfile_dir']
