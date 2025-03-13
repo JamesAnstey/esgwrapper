@@ -15,6 +15,8 @@ Workflow:
 
 - run `./publish.py -p` to publish (activate correct env first)
 
+- good idea to have search_esgf session open in parallel (e.g. on science) to check progress, this is totally independent of running the publisher
+
 Note, the envs for mapfile generation & publishing are different
 
 Calling without args, it will check the available datasets. Useful to check what can be published.

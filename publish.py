@@ -250,7 +250,12 @@ if args.publish:
     mapfile_base_path = config_pub['mapfile']['mapfile_dir']
 
     commands = config_pub['publish']['commands']
+    n = len(datasets)
+    k = 0
     for dataset_id, info in datasets.items():
+        k += 1
+        print(f'\nPublishing dataset ({k} of {n}): {dataset_id}')
+
         mapfile_path = os.path.join(mapfile_base_path, mapfile_path_template.format(**info['params']))
         mapfile = dataset_id + os.path.extsep + 'map'
         d = {
