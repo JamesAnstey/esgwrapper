@@ -284,7 +284,14 @@ def search(params,
         else:
             assert num_docs == limit # if I understand the ESGF search correctly, this is guaranteed
             offset += num_docs
-    
+
+    # d = {
+    #     'filter' : search_filter,
+    #     'number of datasets found' : numFound,
+    #     'time taken for search' : t_search,
+    # }
+    # d_info['results by filter'] += [d]
+
     t_search = time.time() - t_search
     if verbose:
         print('Time taken for search: {0} s'.format('%.3g' % t_search))
@@ -301,7 +308,7 @@ def search(params,
             params = {}
             for p in dataset_parameters:
                 if isinstance(doc[p], (list,tuple)):
-                    assert len(doc[p]) == 1
+                    assert len(doc[p]) == 1, p
                     params[p] = doc[p][0]
                 else:
                     params[p] = doc[p]
@@ -340,6 +347,8 @@ def search(params,
     # TO DO:
     #   what is d_query for?
     #   root out any other cmip6 assumptions (want this to work for any project)
+
+    print(f'Total number of datasets found: {len(d_found)}')
 
     return d_found
 

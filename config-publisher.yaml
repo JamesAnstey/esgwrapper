@@ -5,7 +5,7 @@ mapfile:
     'esgmapfile make -i /datalocal/config/esgcet/ --project {project} {dataset_path} --outdir {mapfile_path}'
   ]
   mapfile_dir : mapfiles
-  mapfile_subdir: '{project}/{activity_id}/{institution_id}/{source_id}/{experiment_id}/{member_id}'
+  mapfile_subdir: '{project}/{activity_drs}/{institution_id}/{source_id}/{experiment_id}/{member_id}'
   clobber: False
 
 publish:
@@ -21,7 +21,7 @@ search_esgf:
 
 DRS:
   cmip6:
-    dataset : '{project}.{activity_id}.{institution_id}.{source_id}.{experiment_id}.{member_id}.{table_id}.{variable_id}.{grid_label}.{version}'
-    path :    '{project}/{activity_id}/{institution_id}/{source_id}/{experiment_id}/{member_id}/{table_id}/{variable_id}/{grid_label}/{version}'
+    dataset : '{project}.{activity_drs}.{institution_id}.{source_id}.{experiment_id}.{member_id}.{table_id}.{variable_id}.{grid_label}.{version}'
+    path :    '{project}/{activity_drs}/{institution_id}/{source_id}/{experiment_id}/{member_id}/{table_id}/{variable_id}/{grid_label}/{version}'
 #    file :    '{variable_id}_{table_id}_{source_id}_{experiment_id}_{member_id}_{grid_label}_{time_subset}.nc'
 
