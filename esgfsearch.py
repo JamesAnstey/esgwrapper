@@ -425,10 +425,9 @@ def show_params(params, dataset_parameters, indent='', return_str=False):
     
     and the above display is how show_params(params) shows the dict.
     '''
-    l = ['{']
+    lw = []
+    lw.append('{')
     m = max([len(p) for p in dataset_parameters])
-    show_apostrophes = not True
-    if show_apostrophes: m += 2
     fmt = '%-{}s'.format(m)
     # Display the keys from dataset_parameters, if present.
     # Also catch any keys in params that aren't in dataset_parameters.
@@ -437,19 +436,17 @@ def show_params(params, dataset_parameters, indent='', return_str=False):
         if p not in params: continue
         ls = [p, params[p]]
         for k in range(len(ls)):
-            if not isinstance(ls[k], str):
+            if isinstance(ls[k], str):
+                ls[k] = f"'{ls[k]}'"
+            else:
                 ls[k] = str(ls[k])
-        if show_apostrophes:
-            for k in range(len(ls)):
-                if isinstance(ls[k], str):
-                    ls[k] = '\'{}\''.format(ls[k])
-        l += ['    {} : {}'.format(fmt % ls[0], ls[1])]
-    l += ['}']
-    l = [indent + s for s in l]
+        lw.append(f'    {fmt % ls[0]} : {ls[1]},')
+    lw.append('}')
+    lw = [indent + s for s in lw]
     if return_str:
-        return '\n'.join(l)
+        return '\n'.join(lw)
     else:    
-        print('\n'.join(l))
+        print('\n'.join(lw))
 
 
 def file_size_str(a):
