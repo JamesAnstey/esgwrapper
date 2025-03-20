@@ -6,18 +6,28 @@ from collections import OrderedDict
 
 
 def match_params(params, reference):
-    keep = True
+    # Loop over parameters (p) in the reference, checking for matches in each of them
+    matches = {}
     for p in reference:
-        if p in params:
-            # keep = keep and ( params[p] in reference[p] )
-            if isinstance(reference[p], str):
-                values = [reference[p]]
-            else:
-                values = reference[p]
-            assert isinstance(values, list)
-            assert all( [isinstance(v, str) for v in values] )
-            keep = keep and ( params[p] in values )
-    return keep
+
+        if p not in params:
+            continue
+
+        # Get value(s) of the reference parameter
+        if isinstance(reference[p], str):
+            # If only a single value (str) was passed, cast it as a list
+            values = [reference[p]]
+        elif isinstance(reference[p], list):
+            # Already a list, so ok, but check they're all str
+            values = reference[p]
+            if not all( [isinstance(v, str) for v in values] ):
+                raise TypeError(f'list of str is required, received: {values}')
+        else:
+            raise TypeError(f'wrong type for reference parameters: {type(reference[p])}')
+
+        matches[p] = params[p] in values
+
+    return matches
 
 
 def find_datasets(base_path, dataset_path, dataset_template, path_template):
@@ -26,8 +36,6 @@ def find_datasets(base_path, dataset_path, dataset_template, path_template):
     path_params = [s.strip('{').strip('}') for s in path_template.split(path_sep)]
  
     path_depth = len(path_params)
-
-    # file_sep = '_'
 
     datasets = {}
 
@@ -58,6 +66,7 @@ def publication_checks(datasets, validation_file):
     with open(filepath, 'r') as f:
         validation_vars = json.load(f)['variables']
         print('Loaded ' + filepath)
+
     # sanitize
     re_key = {'Stamp of\nApproval' : 'Stamp of Approval'}
     for var_info in validation_vars.values():
@@ -118,4 +127,3 @@ def publication_checks(datasets, validation_file):
             print('  ' + var_key)
 
     return datasets
-

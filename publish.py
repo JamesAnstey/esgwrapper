@@ -15,7 +15,7 @@ import yaml
 from collections import OrderedDict
 
 from tools import find_datasets, get_unique_param_values, match_params, publication_checks
-from esgfsearch import search
+from esgfsearch import search, show_params
 
 ##############################################################################
 
@@ -110,21 +110,29 @@ if args.datasets:
 
     print(f'Found {len(datasets)} datasets')
 
-    filter = config['keep']
-    if filter:
+    if config['keep']:
+        print('Keeping datasets with these parameter values:')
+        show_params(config['keep'], indent='  ')
         keep = set()
         for dataset_id, info in datasets.items():
-            if match_params(info['params'], filter):
+            matches = match_params(info['params'], config['keep'])
+            if all(matches.values()):
                 keep.add(dataset_id)
+        n = len(datasets)
         datasets = {s: datasets[s] for s in keep}
+        print(f'  --> excluded {n-len(datasets)} datasets')
 
-    filter = config['exclude']
-    if filter:
-        keep = set()
+    if config['exclude']:
+        print('Excluding datasets with these parameter values:')
+        show_params(config['exclude'], indent='  ')
+        exclude = set()
         for dataset_id, info in datasets.items():
-            if not match_params(info['params'], filter):
-                keep.add(dataset_id)
-        datasets = {s: datasets[s] for s in keep}
+            matches = match_params(info['params'], config['exclude'])
+            if any(matches.values()):
+                exclude.add(dataset_id)
+        n = len(datasets)
+        datasets = {s: datasets[s] for s in datasets if s not in exclude}
+        print(f'  --> excluded {n-len(datasets)} datasets')
 
     print(f'Retained {len(datasets)} datasets')
 
@@ -188,6 +196,8 @@ if args.mapfile or args.publish:
     with open(filepath, 'r') as f:
         datasets = json.load(f)['datasets']
         print('Loaded ' + filepath)
+
+    datasets = OrderedDict({s : datasets[s] for s in sorted(datasets.keys(), key=str.lower)})
 
     do_cmds = not args.dry_run
 

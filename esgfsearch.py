@@ -408,7 +408,7 @@ def version_num(version, project):
     return v
 
 
-def show_params(params, dataset_parameters, indent='', return_str=False):
+def show_params(params, dataset_parameters=None, indent='', return_str=False):
     '''Pretty print of a parameters dict. Only purpose is to show the parameters
     in the same order as they appear in dataset_parameters. This makes it easier
     to compare the contents of params with the name of a dataset. E.g. for dataset
@@ -434,6 +434,8 @@ def show_params(params, dataset_parameters, indent='', return_str=False):
     
     and the above display is how show_params(params) shows the dict.
     '''
+    if not dataset_parameters:
+        dataset_parameters = sorted(params.keys(), key=str.lower)
     lw = []
     lw.append('{')
     m = max([len(p) for p in dataset_parameters])

@@ -2,6 +2,7 @@
 Workflow:
 
 - copy code to the ESGF server using `server_sync.py send`
+e.g. `./server_sync.py send publish.py config-datasets.yaml config-publisher.yaml tools.py setup.sh esgfsearch.py`
 
 - ssh to the ESGF server 
 
@@ -11,7 +12,7 @@ Workflow:
 
 - copy config-datasets.yaml into the working dir and edit it
 
-- run `./publish.py -m` to generate mapfiles (activate correct env first)
+- run `./publish.py -m` to generate mapfiles (activate correct env first). useful to check progress: `tree mapfiles | grep .map | wc` (compare to no. of datasets in `datasets.json`)
 
 - run `./publish.py -p` to publish (activate correct env first)
 
