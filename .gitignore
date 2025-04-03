@@ -3,4 +3,5 @@ inventory
 tmp
 datasets.json
 .tmp_esgf_search
+work
 

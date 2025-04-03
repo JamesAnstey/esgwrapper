@@ -4,6 +4,8 @@ import json
 import os
 from collections import OrderedDict
 
+from esgfsearch import file_size_str
+
 
 def match_params(params, reference):
     # Loop over parameters (p) in the reference, checking for matches in each of them
@@ -30,7 +32,7 @@ def match_params(params, reference):
     return matches
 
 
-def find_datasets(base_path, dataset_path, dataset_template, path_template):
+def find_datasets(base_path, dataset_path, dataset_template, path_template, get_size=False):
 
     path_sep = os.path.sep
     path_params = [s.strip('{').strip('}') for s in path_template.split(path_sep)]
@@ -38,6 +40,8 @@ def find_datasets(base_path, dataset_path, dataset_template, path_template):
     path_depth = len(path_params)
 
     datasets = {}
+
+    valid_ext = ['.nc']
 
     path = os.path.join(base_path, dataset_path)
     for (dirpath, dirnames, filenames) in os.walk(path, followlinks=False):
@@ -49,6 +53,14 @@ def find_datasets(base_path, dataset_path, dataset_template, path_template):
             datasets[dataset_id] = {
                 'path' : dirpath, 'params' : params
             }
+            if get_size:
+                size = 0
+                for filename in filenames:
+                    if os.path.splitext(filename)[-1] in valid_ext:
+                        size += os.stat(os.path.join(dirpath, filename)).st_size
+                datasets[dataset_id].update({
+                    'size' : size, 'size_str' : file_size_str(size)
+                })
 
     return datasets
 

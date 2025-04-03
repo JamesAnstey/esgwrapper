@@ -9,6 +9,18 @@ from math import ceil
 
 SEP_DATASET = '.'
 
+BLOCK_SIZE = 1024.  # 1 MB = 1024 KB, 1 GB = 1024 MB, etc
+# BLOCK_SIZE = 1000.  # 1 MB = 1000 KB, 1 GB = 1000 MB, etc
+
+SIZE_SUFFIX = {
+    'B' : 1,
+    'KB': BLOCK_SIZE,
+    'MB': BLOCK_SIZE**2,
+    'GB': BLOCK_SIZE**3,
+    'TB': BLOCK_SIZE**4,
+    'PB': BLOCK_SIZE**5,
+}
+
 def search(params,
            dataset_parameters,
            project,
@@ -460,29 +472,39 @@ def show_params(params, dataset_parameters=None, indent='', return_str=False):
         print('\n'.join(lw))
 
 
-def file_size_str(a):
-    '''Given file size in bytes, return string giving the size in nice
-    human-readable units (like ls -h does at the shell prompt.'''
-
-    SIZE_PREFIX_MULTIPLE = 1024.  # 1 MB = 1024 KB, 1 GB = 1024 MB, etc
-    # SIZE_PREFIX_MULTIPLE = 1000.  # 1 MB = 1000 KB, 1 GB = 1000 MB, etc 
-
-    m = SIZE_PREFIX_MULTIPLE
-    d_b = {
-        'B' : 1.
-    ,   'KB': 1 / m
-    ,   'MB': 1 / m**2
-    ,   'GB': 1 / m**3
-    ,   'TB': 1 / m**4
-    ,   'PB': 1 / m**5
-    }
-    # list of units, in order of descending size of the unit
-    uo = sorted([(d_b[s], s) for s in d_b])
+def file_size_str(size):
+    '''
+    Given file size in bytes, return string giving the size in nice
+    human-readable units (like ls -h does at the shell prompt.
+    '''
+    # sort size suffixes from largest to smallest
+    uo = sorted([(1./SIZE_SUFFIX[s], s) for s in SIZE_SUFFIX])
     # choose the most sensible size to display
     for tu in uo:
-        if (a*tu[0]) > 1: break
+        if (size*tu[0]) > 1: break
     su = tu[1]
-    a *= tu[0]
-    sa = str('%.3g' % a)
+    size *= tu[0]
+    sa = str('%.3g' % size)
     return sa + ' ' + su
 
+def parse_file_size_str(size_str):
+    '''
+    Parse a size str to get size in bytes
+    '''
+    
+    # sort size suffixes from largest to smallest
+    uo = sorted([(SIZE_SUFFIX[s], s) for s in SIZE_SUFFIX])[::-1]
+    # convert str to a size in bytes
+    # this assumes that 'B', the smallest size suffix, comes at the end of the list!
+    # (since other sizes also end in 'B', e.g. 'KB')
+    size = None
+    for mult,suffix in uo:
+        if size_str.endswith(suffix):
+            size = size_str.strip(suffix)
+        elif len(suffix) == 2 and size_str.endswith(suffix[0]):
+            size = size_str.strip(suffix[0])
+        else:
+            continue
+        size = int( float(size)*mult )
+        break
+    return size

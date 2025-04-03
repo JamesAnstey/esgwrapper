@@ -15,7 +15,7 @@ import yaml
 from collections import OrderedDict
 
 from tools import find_datasets, get_unique_param_values, match_params, publication_checks
-from esgfsearch import search, show_params
+from esgfsearch import search, show_params, parse_file_size_str
 
 ##############################################################################
 
@@ -52,6 +52,8 @@ parser.add_argument('-dr', '--dry-run', action='store_true', default=False,
                     help='show commands but don\'t execute them')
 parser.add_argument('-nes', '--no-esgf-search', action='store_true', default=False,
                     help='turn off ESGF search that checks whether datasets are already published')
+parser.add_argument('-max', '--max-size', type=str,
+                    help='maximum size of dataset to retain, examples: "1 GB", 1GB, 1G')
 args = parser.parse_args()
 
 if not any([args.__dict__[action] for action in actions]):
@@ -88,6 +90,11 @@ with open(config_file) as f:
 if args.datasets:
     # Determine datasets to publish, write them to datasets_file
 
+    get_size = False
+    if args.max_size:
+        max_size = parse_file_size_str(args.max_size)
+        get_size = True
+
     base_paths = config['paths'].split()  # top-level paths to search at
     dataset_paths = config['datasets'].split()  # datasets to search (dir path for some level in the DRS dir tree)
 
@@ -104,11 +111,21 @@ if args.datasets:
         else:
             print('Path not found: ' + base_path)
         for dataset_path in dataset_paths:
-            d = find_datasets(base_path, dataset_path, dataset_template, path_template)
+            d = find_datasets(base_path, dataset_path, dataset_template, path_template, get_size=get_size)
             datasets.update(d)
             del d
 
     print(f'Found {len(datasets)} datasets')
+
+    if args.max_size:
+        print(f'Keeping datasets with size up to {args.max_size} ({max_size} B)')
+        keep = set()
+        for dataset_id, info in datasets.items():
+            if info['size'] <= max_size:
+                keep.add(dataset_id)
+        n = len(datasets)
+        datasets = {s: datasets[s] for s in keep}
+        print(f'  --> excluded {n-len(datasets)} datasets')
 
     if config['keep']:
         print('Keeping datasets with these parameter values:')
