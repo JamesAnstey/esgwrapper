@@ -117,16 +117,6 @@ if args.datasets:
 
     print(f'Found {len(datasets)} datasets')
 
-    if args.max_size:
-        print(f'Keeping datasets with size up to {args.max_size} ({max_size} B)')
-        keep = set()
-        for dataset_id, info in datasets.items():
-            if info['size'] <= max_size:
-                keep.add(dataset_id)
-        n = len(datasets)
-        datasets = {s: datasets[s] for s in keep}
-        print(f'  --> excluded {n-len(datasets)} datasets')
-
     if config['keep']:
         print('Keeping datasets with these parameter values:')
         show_params(config['keep'], indent='  ')
@@ -182,6 +172,16 @@ if args.datasets:
             print('All of the datasets are already published')
         else:
             print(f'Removed {n-len(datasets)} already-published datasets from publishing list')
+
+    if args.max_size:
+        print(f'Keeping datasets with size up to {args.max_size} ({max_size} B)')
+        keep = set()
+        for dataset_id, info in datasets.items():
+            if info['size'] <= max_size:
+                keep.add(dataset_id)
+        n = len(datasets)
+        datasets = {s: datasets[s] for s in keep}
+        print(f'  --> excluded {n-len(datasets)} datasets')
 
     datasets = OrderedDict({s : datasets[s] for s in sorted(datasets.keys(), key=str.lower)})
     param_unique_values = get_unique_param_values(datasets, dataset_parameters)
