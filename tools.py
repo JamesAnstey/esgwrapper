@@ -53,11 +53,18 @@ def find_datasets(base_path, dataset_path, dataset_template, path_template, get_
             datasets[dataset_id] = {
                 'path' : dirpath, 'params' : params
             }
+            dataset_files = set()
+            for filename in filenames:
+                if os.path.splitext(filename)[-1] in valid_ext:
+                    dataset_files.add(filename)
+            dataset_files = sorted(filenames, key=str.lower)
+            datasets[dataset_id].update({
+                'no. of files' : len(dataset_files), 'filenames' : dataset_files,
+            })
             if get_size:
                 size = 0
-                for filename in filenames:
-                    if os.path.splitext(filename)[-1] in valid_ext:
-                        size += os.stat(os.path.join(dirpath, filename)).st_size
+                for filename in dataset_files:
+                    size += os.stat(os.path.join(dirpath, filename)).st_size
                 datasets[dataset_id].update({
                     'size' : size, 'size_str' : file_size_str(size)
                 })
