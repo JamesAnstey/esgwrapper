@@ -48,12 +48,16 @@ parser.add_argument('-df', '--datasets-file', type=str, default=datasets_file,
                     help='name of datasets output json file')
 parser.add_argument('-nv', '--no-validation', action='store_true', default=False,
                     help='turn off checking of validation list (Stamp of Approval)')
-parser.add_argument('-dr', '--dry-run', action='store_true', default=False,
+parser.add_argument('-dry', '--dry-run', action='store_true', default=False,
                     help='show commands but don\'t execute them')
 parser.add_argument('-nes', '--no-esgf-search', action='store_true', default=False,
                     help='turn off ESGF search that checks whether datasets are already published')
 parser.add_argument('-max', '--max-size', type=str,
                     help='maximum size of dataset to retain, examples: "1 GB", 1GB, 1G')
+parser.add_argument('-min', '--min-size', type=str,
+                    help='minimum size of dataset to retain, examples: "1 GB", 1GB, 1G')
+parser.add_argument('-nxr', '--no-xarray', action='store_true', default=False,
+                    help='use --no-xarray argument to esgpublish (prevents failure on large datasets)')
 args = parser.parse_args()
 
 if not any([args.__dict__[action] for action in actions]):
@@ -93,6 +97,9 @@ if args.datasets:
     get_size = False
     if args.max_size:
         max_size = parse_file_size_str(args.max_size)
+        get_size = True
+    if args.min_size:
+        min_size = parse_file_size_str(args.min_size)
         get_size = True
 
     base_paths = config['paths'].split()  # top-level paths to search at
@@ -178,6 +185,16 @@ if args.datasets:
         keep = set()
         for dataset_id, info in datasets.items():
             if info['size'] <= max_size:
+                keep.add(dataset_id)
+        n = len(datasets)
+        datasets = {s: datasets[s] for s in keep}
+        print(f'  --> excluded {n-len(datasets)} datasets')
+
+    if args.min_size:
+        print(f'Keeping datasets with size at least {args.min_size} ({min_size} B)')
+        keep = set()
+        for dataset_id, info in datasets.items():
+            if info['size'] >= min_size:
                 keep.add(dataset_id)
         n = len(datasets)
         datasets = {s: datasets[s] for s in keep}
@@ -277,6 +294,17 @@ if args.publish:
     mapfile_base_path = config_pub['mapfile']['mapfile_dir']
 
     commands = config_pub['publish']['commands']
+    if args.no_xarray:
+        # Convenience option to add --no-xarray argument to esgpublish command.
+        # Intention of this wrapper is that publisher command(s) are set in config-publisher.yaml.
+        # However we only need to use --no-xarray for large datasets, so it's useful
+        # to be able to specify it as a command-line argument to publish.py instead
+        # of modifying config-publisher.yaml often (error-prone) or having more than
+        # one config-publisher.yaml (confusing). Can use in conjuntion with -min argument.
+        for k,cmd in enumerate(commands):
+            if cmd.startswith('esgpublish'):
+                commands[k] = cmd + ' --no-xarray'
+
     n = len(datasets)
     k = 0
     for dataset_id, info in datasets.items():
