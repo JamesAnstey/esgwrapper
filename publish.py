@@ -15,7 +15,7 @@ import yaml
 from collections import OrderedDict
 
 from tools import find_datasets, get_unique_param_values, match_params, publication_checks
-from esgfsearch import search, show_params, parse_file_size_str
+from esgfsearch import search, show_params, parse_file_size_str, file_size_str
 
 ##############################################################################
 
@@ -48,6 +48,8 @@ parser.add_argument('-dry', '--dry-run', action='store_true', default=False,
                     help='show commands but don\'t execute them')
 parser.add_argument('-nes', '--no-esgf-search', action='store_true', default=False,
                     help='turn off ESGF search that checks whether datasets are already published')
+parser.add_argument('-gs', '--get-size', action='store_true', default=False,
+                    help='get size of datasets and report total size of publishable data (also done if -min or -max used)')
 parser.add_argument('-max', '--max-size', type=str,
                     help='maximum size of dataset to retain, examples: "1 GB", 1GB, 1G')
 parser.add_argument('-min', '--min-size', type=str,
@@ -94,7 +96,7 @@ with open(config_file) as f:
 if args.datasets:
     # Determine datasets to publish, write them to datasets_file
 
-    get_size = False
+    get_size = args.get_size
     if args.max_size:
         max_size = parse_file_size_str(args.max_size)
         get_size = True
@@ -215,6 +217,16 @@ if args.datasets:
        },
         'datasets' : datasets
     })
+    if get_size:
+        # Report total size of publishable datasets
+        size = 0
+        for dataset_id, info in datasets.items():
+            size += info['size']
+        total_size = file_size_str(size)
+        out['Header'].update({
+            'total size (all datasets)': total_size
+        })
+        print(f'Total size of publishable datasets: {total_size}')
     filepath = datasets_file
     with open(filepath, 'w') as f:
         json.dump(out, f, indent=4)
