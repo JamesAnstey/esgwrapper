@@ -42,9 +42,10 @@ This can simply be all of the partitions on the CRD ESGF server, but specifying 
 The wrapper uses three steps to publish, all done by calling `publish` from the working dir using different command-line arguments (`publish` is an alias for `publish.py`).
 The first is dataset discovery:
 ```
-publish -d
+publish -d -gs -dreq
 ```
 which generates a file `datasets.json` specifying the datasets to publish.
+The basic option for dataset discovery is `-d`, but including the `-gs` and `-dreq` flags is recommended (see below).
 This file is the input for the next two steps, generating mapfiles and then publishing. 
 These are done in different conda envs, which are specified in `config-publisher.yaml` (the step will abort if the correct env is not activated).
 To generate mapfiles, activate the required environment and then run:
@@ -81,6 +82,9 @@ publish -d -dreq
 ```
 This makes use of an input file specifying the variables requested for each experiment, provided in `input/`. 
 If setting up a new project and filtering by data request is desired, a file specifying its requested variables will need to be provided and the relevant functions in `tools.py` updated accordingly.
+
+Including the `-gs` option is advised, so that information about dataset size is returned.
+This is useful to find out what volume of data will be published, and potentially to check for large datasets that might cause publisher problems (see below).
 
 ### Stamp of Approval
 
