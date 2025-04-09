@@ -1,0 +1,56 @@
+#autoc_path: autocurator
+cert: '"na"'
+cmor_path: /esg/publish/cmip6-cmor-tables/Tables
+data_node: crd-esgf-drc.ec.gc.ca
+data_roots:
+  /esg/data: esg_dataroot
+  /esgA/data: esgA_dataroot
+  /esgB/data: esgB_dataroot
+  /esgC/data: esgC_dataroot
+  /esgD/data: esgD_dataroot
+  /esgE/data: esgE_dataroot
+  /esgF/data: esgF_dataroot
+  /esgG/data: esgG_dataroot
+  /esgH/data: esgH_dataroot
+  /esgI/data: esgI_dataroot
+#data_transfer_node: 
+force_prepare: 'false'
+#globus_uuid:
+#index_node: esgf-fedtest.llnl.gov
+index_node: esgf-node.llnl.gov
+#index_node: handle-esgf-trusted.dkrz.de
+pid_creds:
+  handle-esgf-trusted.dkrz.de:
+    password: B8a*:!*6$7oW$G'`3!:G
+    port: 5671
+    priority: 1
+    ssl_enabled: true
+    user: esgf-publisher
+    vhost: esgf-pid
+  aims4.llnl.gov:
+    password: _EarTH!S9uAr3.PhoB0S!
+    port: 7070
+    priority: 2
+    ssl_enabled: true
+    user: esgf-publisher
+    vhost: esgf-pid
+  esgf-pid-mq.ipsl.upmc.fr:
+    password: LDfj5784T4VeKTxwhpqk8UmSqbC9DkTW
+    port: 5671
+    priority: 3
+    ssl_enabled: true
+    user: esgf-publisher
+    vhost: esgf-pid
+  140.208.31.31:
+    password: 6aFu8#tjnxz9p9WVq^uhhD
+    port: 5671
+    priority: 4
+    ssl_enabled: true
+    user: esgf-publisher
+    vhost: esgf-pid
+set_replica: 'false'
+silent: 'false'
+skip_prepare: 'true'
+test: 'false'
+user_project_config : null
+verbose: 'false'
