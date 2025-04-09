@@ -59,16 +59,39 @@ publish -p
 Verification of published datasets can be done by any available ESGF search method, such as with the [browser interface](https://aims2.llnl.gov/search) or a script-based tool like [search_esgf](https://gitlab.com/JamesAnstey/search_esgf).
 
 
-### More details
+Invoke `publish -h` to see the various options available.
+Additional explanation of some of these is given below.
+
+
+### Test commands before publishing
 
 To do a dry run of the mapfile or publish steps, invoke with the `-dry` option, e.g.
 ```
 publish -p -dry
 ```
 which will display the commands to stdout without running them.
-Invoke `publish -h` to see other options.
+This is useful to verify that the wrapper will indeed execute the expected commands.
+Displaying the commands is also useful for testing the publisher by cut-pasting and manually executing them in the shell.
 
-If publishing **large datasets**, bigger than about 30 GB, v5.24 of the publisher can freeze due to memory issues on our system (as of April 2025).
+### Data request
+
+To retain only request datasets, based on a project's data request, use the `-dreq` option for dataset discovery:
+```
+publish -d -dreq
+```
+This makes use of an input file specifying the variables requested for each experiment, provided in `input/`. 
+If setting up a new project and filtering by data request is desired, a file specifying its requested variables will need to be provided and the relevant functions in `tools.py` updated accordingly.
+
+### Stamp of Approval
+
+By default the "Stamp of Approval" is checked, blocking publication for unapproved variables (i.e., variables that have not been cleared for publication following examination by relevant scientists).
+Information used by this check is stored in `input/validation_variables.json`.
+The `-nv` option turns off this check (e.g. `publish -d -nv`).
+However the check is intended to prevent publication of unvalidated data and it should **not** be turned off without good reason.
+
+### Large datasets
+
+If publishing large datasets, bigger than about 30 GB, v5.24 of the publisher can freeze due to memory issues on our system (as of April 2025).
 [This was patched](https://github.com/ESGF/esg-publisher/issues/252) and the patch installed in the ESGF server's `esgf-pub524` env by:
 ```
 pip install --upgrade --no-deps --force-reinstall 'git+https://github.com/sashakames/esg-publisher@patch-5.2.5-ncscan#subdirectory=src/python'
@@ -83,12 +106,6 @@ And then, after mapfile generation, invoke using the `--no-xarray` option:
 publish -p --no-xarray
 ```
 (Equivalently, the `esgpublish` command specified in `config-publisher.yaml` could be updated to include the `--no-xarray` argument; having this option for `publish` is simply a convenience to avoid having to update `config-publisher.yaml` based on the size of datasets being published.)
-
-### Stamp of Approval
-
-By default the "Stamp of Approval" is checked, blocking publication for unapproved variables (i.e., variables that have not been cleared for publication following examination by relevant scientists).
-Information used by this check is stored in `input/validation_variables.json`.
-The `-nv` option turns off this check (e.g. `publish -d -nv`), but this is not advised without good reason!
 
 
 ## Other information

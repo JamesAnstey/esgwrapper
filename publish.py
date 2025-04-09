@@ -177,10 +177,11 @@ if args.datasets:
 
     # Filter based on other criteria
     if not args.no_validation:
-        # Check stamp of approval and any other validation criteria
+        # Check stamp of approval and other validation criteria
         validation_file = os.path.join(repo_path, 'input/validation_variables.json')
         datasets = publication_checks(datasets, validation_file)
     if args.check_data_request:
+        # Check which datasets are requested in the project's data request, exclude those that aren't
         validation_file = get_dreq_validation_file(project, repo_path)
         datasets = data_request_checks(datasets, validation_file, verbose=True)
 
