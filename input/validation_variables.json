@@ -23834,6 +23834,30 @@
       "modeling_realm": "atmos",
       "priority": 1.0,
       "units": "m"
+    },
+    "Efx.rsd": {
+      "CMOR table": "Efx",
+      "Problems": "was not in validation spreadsheet, manually added to this json file",
+      "Stamp of\nApproval": " ",
+      "dimensions": ""
+    },
+    "Efx.rlu": {
+      "CMOR table": "Efx",
+      "Problems": "was not in validation spreadsheet, manually added to this json file",
+      "Stamp of\nApproval": " ",
+      "dimensions": ""
+    },
+    "Efx.rsu": {
+      "CMOR table": "Efx",
+      "Problems": "was not in validation spreadsheet, manually added to this json file",
+      "Stamp of\nApproval": " ",
+      "dimensions": ""
+    },
+    "Efx.rld": {
+      "CMOR table": "Efx",
+      "Problems": "was not in validation spreadsheet, manually added to this json file",
+      "Stamp of\nApproval": " ",
+      "dimensions": ""
     }
   },
   "variables override": {
