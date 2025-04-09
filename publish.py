@@ -183,7 +183,7 @@ if args.datasets:
     if args.check_data_request:
         # Check which datasets are requested in the project's data request, exclude those that aren't
         validation_file = get_dreq_validation_file(project, repo_path)
-        datasets = data_request_checks(datasets, validation_file, verbose=True)
+        datasets = data_request_checks(datasets, validation_file)
 
     dataset_sep = '.'
     dataset_parameters = [s.strip('{').strip('}') for s in dataset_template.split(dataset_sep)]
