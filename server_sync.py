@@ -3,22 +3,26 @@
 import argparse
 import os
 
+repo = 'esgwrapper'
+path = os.path.normpath(f'/esg/publish/{repo}')
+# path = os.path.normpath(f'/esg/publish/test/{repo}')
 
 parser = argparse.ArgumentParser(
     description='sync repo to/from CRD ESGF server (invoke on science HPC)'
     )
 parser.add_argument('action', choices=['send', 'get'])
 parser.add_argument('files', nargs='+', type=str, help='files to transfer (whitespace-separated list)')
+parser.add_argument('-p', '--path', type=str, default=path,
+                    help=f'path on server, default: {path}')
 args = parser.parse_args()
 
 server = 'eccc-esgf.collab.science.gc.ca'
 user = 'acrnpub'
-repo = 'esgwrapper'
-path = os.path.normpath(f'/esg/publish/{repo}')
-# path = os.path.normpath(f'/esg/publish/test/{repo}')
 
-if not os.path.basename(os.getcwd()) == repo:
-    raise OSError('Invoke this in top level of repository: ' + repo)
+path = os.path.normpath(args.path)
+
+# if not os.path.basename(os.getcwd()) == repo:
+#     raise OSError('Invoke this in top level of repository: ' + repo)
 
 cmds = []
 if args.action == 'send':
