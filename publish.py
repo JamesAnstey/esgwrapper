@@ -14,7 +14,8 @@ import sys
 import yaml
 from collections import OrderedDict
 
-from tools import find_datasets, get_unique_param_values, match_params, publication_checks
+from tools import (find_datasets, get_unique_param_values, match_params,
+                   publication_checks, data_request_checks, get_dreq_validation_file)
 from esgfsearch import search, show_params, parse_file_size_str, file_size_str
 
 ##############################################################################
@@ -48,6 +49,8 @@ parser.add_argument('-dry', '--dry-run', action='store_true', default=False,
                     help='show commands but don\'t execute them')
 parser.add_argument('-nes', '--no-esgf-search', action='store_true', default=False,
                     help='turn off ESGF search that checks whether datasets are already published')
+parser.add_argument('-dreq', '--check-data-request', action='store_true', default=False,
+                    help='only retain requested variables (based on the data request)')
 parser.add_argument('-gs', '--get-size', action='store_true', default=False,
                     help='get size of datasets and report total size of publishable data (also done if -min or -max used)')
 parser.add_argument('-max', '--max-size', type=str,
@@ -126,6 +129,7 @@ if args.datasets:
 
     print(f'Found {len(datasets)} datasets')
 
+    # Apply filters specified in config-datasets file
     if config['keep']:
         print('Keeping datasets with these parameter values:')
         show_params(config['keep'], indent='  ')
@@ -137,7 +141,6 @@ if args.datasets:
         n = len(datasets)
         datasets = {s: datasets[s] for s in keep}
         print(f'  --> excluded {n-len(datasets)} datasets')
-
     if config['exclude']:
         print('Excluding datasets with these parameter values:')
         show_params(config['exclude'], indent='  ')
@@ -152,10 +155,34 @@ if args.datasets:
 
     print(f'Retained {len(datasets)} datasets')
 
+    # Filter based on dataset size
+    if args.max_size:
+        print(f'Keeping datasets with size up to {args.max_size} ({max_size} B)')
+        keep = set()
+        for dataset_id, info in datasets.items():
+            if info['size'] <= max_size:
+                keep.add(dataset_id)
+        n = len(datasets)
+        datasets = {s: datasets[s] for s in keep}
+        print(f'  --> excluded {n-len(datasets)} datasets')
+    if args.min_size:
+        print(f'Keeping datasets with size at least {args.min_size} ({min_size} B)')
+        keep = set()
+        for dataset_id, info in datasets.items():
+            if info['size'] >= min_size:
+                keep.add(dataset_id)
+        n = len(datasets)
+        datasets = {s: datasets[s] for s in keep}
+        print(f'  --> excluded {n-len(datasets)} datasets')
+
+    # Filter based on other criteria
     if not args.no_validation:
         # Check stamp of approval and any other validation criteria
         validation_file = os.path.join(repo_path, 'input/validation_variables.json')
         datasets = publication_checks(datasets, validation_file)
+    if args.check_data_request:
+        validation_file = get_dreq_validation_file(project, repo_path)
+        datasets = data_request_checks(datasets, validation_file, verbose=True)
 
     dataset_sep = '.'
     dataset_parameters = [s.strip('{').strip('}') for s in dataset_template.split(dataset_sep)]
@@ -181,26 +208,6 @@ if args.datasets:
             print('All of the datasets are already published')
         else:
             print(f'Removed {n-len(datasets)} already-published datasets from publishing list (keeping {len(datasets)})')
-
-    if args.max_size:
-        print(f'Keeping datasets with size up to {args.max_size} ({max_size} B)')
-        keep = set()
-        for dataset_id, info in datasets.items():
-            if info['size'] <= max_size:
-                keep.add(dataset_id)
-        n = len(datasets)
-        datasets = {s: datasets[s] for s in keep}
-        print(f'  --> excluded {n-len(datasets)} datasets')
-
-    if args.min_size:
-        print(f'Keeping datasets with size at least {args.min_size} ({min_size} B)')
-        keep = set()
-        for dataset_id, info in datasets.items():
-            if info['size'] >= min_size:
-                keep.add(dataset_id)
-        n = len(datasets)
-        datasets = {s: datasets[s] for s in keep}
-        print(f'  --> excluded {n-len(datasets)} datasets')
 
     datasets = OrderedDict({s : datasets[s] for s in sorted(datasets.keys(), key=str.lower)})
     param_unique_values = get_unique_param_values(datasets, dataset_parameters)

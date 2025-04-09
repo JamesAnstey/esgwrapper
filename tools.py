@@ -2,7 +2,7 @@
 
 import json
 import os
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 from esgfsearch import file_size_str
 
@@ -144,5 +144,59 @@ def publication_checks(datasets, validation_file):
         print(f'Discarded {len(not_approved)} variables because no Stamp of Approval:')
         for var_key in sorted(not_approved, key=str.lower):
             print('  ' + var_key)
+
+    return datasets
+
+
+def get_dreq_validation_file(project, repo_path):
+    dreq_info = {
+        'cmip6': 'request_vars_01.00.33.json'
+    }
+    if project not in dreq_info:
+        raise ValueError(f'Need to specify location of data request information for {project}')
+    return os.path.join(repo_path, os.path.join('input', dreq_info[project]))
+
+
+def data_request_checks(datasets, validation_file, verbose=False):
+
+    filepath = validation_file
+    with open(filepath, 'r') as f:
+        dreq = json.load(f)
+        print('Loaded ' + filepath)
+
+    project = dreq['info']['project']
+    expt_vars = defaultdict(set)
+    expt_missing_priority = defaultdict(list)
+    if project == 'cmip6':
+        # use all priority levels
+        use_priority_levels = [str(m) for m in dreq['info']['priorities']]
+        # for each experiment, get full set of requested variables
+        for expt in dreq['vars']:
+            vars_by_priority = dreq['vars'][expt]['vars by priority']
+            for p in use_priority_levels:
+                if p in vars_by_priority:
+                    expt_vars[expt].update(vars_by_priority[p])
+                else:
+                    expt_missing_priority[expt].append(p)
+            if verbose:
+                print(f'{len(expt_vars[expt])} requested variables for {expt}')
+        if verbose:
+            print('Missing priority levels for these experiments:')
+            for expt in sorted(expt_missing_priority, key=str.lower):
+                print(f'  {expt}: ' + ', '.join(expt_missing_priority[expt]))
+        # loop over datasets to determine which ones are requested
+        var_name_template = '{table_id}.{variable_id}'
+        keep = set()
+        for dataset_id, info in datasets.items():
+            var_name = var_name_template.format(**info['params'])
+            expt = info['params']['experiment_id']
+            if var_name in expt_vars[expt]:
+                keep.add(dataset_id)
+        n = len(datasets)
+        datasets = {s: datasets[s] for s in keep}
+        print(f'Retained {len(datasets)} requested datasets (excluded {n-len(datasets)} datasets that were not requested)')
+
+    else:
+        raise ValueError(f'Need to specify how to filter variables based {project} data request')
 
     return datasets
