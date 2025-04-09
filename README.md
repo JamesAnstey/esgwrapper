@@ -63,6 +63,8 @@ Verification of published datasets can be done by any available ESGF search meth
 Invoke `publish -h` to see the various options available.
 Additional explanation of some of these is given below.
 
+Running the above commands in persistent shell sessions, such as with ThinLinc, is advised because publishing a lot of data can take a while to run.
+
 
 ### Test commands before publishing
 
