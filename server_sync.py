@@ -15,6 +15,7 @@ server = 'eccc-esgf.collab.science.gc.ca'
 user = 'acrnpub'
 repo = 'esgwrapper'
 path = os.path.normpath(f'/esg/publish/{repo}')
+# path = os.path.normpath(f'/esg/publish/test/{repo}')
 
 if not os.path.basename(os.getcwd()) == repo:
     raise OSError('Invoke this in top level of repository: ' + repo)

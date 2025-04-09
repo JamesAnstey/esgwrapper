@@ -44,10 +44,6 @@ actions = OrderedDict({
 for action, d in actions.items():
     parser.add_argument(d['short'], f'--{action}', action='store_true', default=False, help=d['help'])
 # Additional arguments
-parser.add_argument('-df', '--datasets-file', type=str, default=datasets_file,
-                    help='name of datasets output json file')
-parser.add_argument('-nv', '--no-validation', action='store_true', default=False,
-                    help='turn off checking of validation list (Stamp of Approval)')
 parser.add_argument('-dry', '--dry-run', action='store_true', default=False,
                     help='show commands but don\'t execute them')
 parser.add_argument('-nes', '--no-esgf-search', action='store_true', default=False,
@@ -58,6 +54,10 @@ parser.add_argument('-min', '--min-size', type=str,
                     help='minimum size of dataset to retain, examples: "1 GB", 1GB, 1G')
 parser.add_argument('-nxr', '--no-xarray', action='store_true', default=False,
                     help='use --no-xarray argument to esgpublish (prevents failure on large datasets)')
+parser.add_argument('-df', '--datasets-file', type=str, default=datasets_file,
+                    help='name of datasets output json file')
+parser.add_argument('-nv', '--no-validation', action='store_true', default=False,
+                    help='turn off checking of validation list (Stamp of Approval) - use with caution!')
 args = parser.parse_args()
 
 if not any([args.__dict__[action] for action in actions]):
@@ -178,7 +178,7 @@ if args.datasets:
         elif len(datasets) == 0:
             print('All of the datasets are already published')
         else:
-            print(f'Removed {n-len(datasets)} already-published datasets from publishing list')
+            print(f'Removed {n-len(datasets)} already-published datasets from publishing list (keeping {len(datasets)})')
 
     if args.max_size:
         print(f'Keeping datasets with size up to {args.max_size} ({max_size} B)')
