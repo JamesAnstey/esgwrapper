@@ -171,7 +171,7 @@ if args.datasets:
         datasets = {s: datasets[s] for s in keep}
         print(f'  --> excluded {n-len(datasets)} datasets')
 
-    # Ensure datasets with size zero or no files are discarded
+    # Ensure datasets with size zero and/or no files are discarded
     if get_size:
         exclude = set()
         for dataset_id, info in datasets.items():
@@ -180,8 +180,7 @@ if args.datasets:
         n = len(datasets)
         keep = [s for s in datasets if s not in exclude]
         datasets = {s: datasets[s] for s in keep}
-        print(f'  --> excluded {n-len(datasets)} datasets that had zero size and/or no files')
-
+        print(f'  --> excluded {n-len(datasets)} datasets that had zero size and/or no valid files')
 
     # Filter based on other criteria
     if not args.no_validation:
