@@ -284,7 +284,12 @@ if args.mapfile:
     mapfile_template = dataset_template + os.path.extsep + 'map'
 
     commands = config_pub['mapfile']['commands']
+
+    n = len(datasets)
+    k = 0
     for dataset_id, info in datasets.items():
+        k += 1
+        print(f'\nGenerating mapfile for dataset ({k} of {n}): {dataset_id}')
         d = {
             'mapfile_path' : os.path.join(mapfile_base_path, mapfile_path_template.format(**info['params'])),
             'dataset_path' : info['path'],
