@@ -55,7 +55,6 @@ def find_datasets(base_path, dataset_path, dataset_template, path_template, get_
             }
             dataset_files = set()
             for filename in filenames:
-                print(filename, os.path.splitext(filename)[-1])
                 if os.path.splitext(filename)[-1] in valid_ext:
                     dataset_files.add(filename)
             dataset_files = sorted(dataset_files, key=str.lower)
