@@ -289,7 +289,7 @@ if args.mapfile:
     k = 0
     for dataset_id, info in datasets.items():
         k += 1
-        print(f'\nGenerating mapfile for dataset ({k} of {n}): {dataset_id}')
+        print(f'\nGenerating mapfile for dataset ({k} of {n}): {dataset_id} ({info["size_str"]})')
         d = {
             'mapfile_path' : os.path.join(mapfile_base_path, mapfile_path_template.format(**info['params'])),
             'dataset_path' : info['path'],
