@@ -51,8 +51,6 @@ parser.add_argument('-nes', '--no-esgf-search', action='store_true', default=Fal
                     help='turn off ESGF search that checks whether datasets are already published')
 parser.add_argument('-dreq', '--check-data-request', action='store_true', default=False,
                     help='only retain requested variables (based on the data request)')
-parser.add_argument('-gs', '--get-size', action='store_true', default=False,
-                    help='get size of datasets and report total size of publishable data (also done if -min or -max used)')
 parser.add_argument('-max', '--max-size', type=str,
                     help='maximum size of dataset to retain, examples: "1 GB", 1GB, 1G')
 parser.add_argument('-min', '--min-size', type=str,
@@ -99,13 +97,11 @@ with open(config_file) as f:
 if args.datasets:
     # Determine datasets to publish, write them to datasets_file
 
-    get_size = args.get_size
+    get_size = True
     if args.max_size:
         max_size = parse_file_size_str(args.max_size)
-        get_size = True
     if args.min_size:
         min_size = parse_file_size_str(args.min_size)
-        get_size = True
 
     base_paths = config['paths'].split()  # top-level paths to search at
     dataset_paths = config['datasets'].split()  # datasets to search (dir path for some level in the DRS dir tree)
@@ -174,6 +170,18 @@ if args.datasets:
         n = len(datasets)
         datasets = {s: datasets[s] for s in keep}
         print(f'  --> excluded {n-len(datasets)} datasets')
+
+    # Ensure datasets with size zero or no files are discarded
+    if get_size:
+        exclude = set()
+        for dataset_id, info in datasets.items():
+            if info['size'] == 0 or info['no. of files'] == 0:
+                exclude.add(dataset_id)
+        n = len(datasets)
+        keep = [s for s in datasets if s not in exclude]
+        datasets = {s: datasets[s] for s in keep}
+        print(f'  --> excluded {n-len(datasets)} datasets that had zero size and/or no files')
+
 
     # Filter based on other criteria
     if not args.no_validation:
