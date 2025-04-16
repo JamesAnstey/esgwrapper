@@ -42,12 +42,12 @@ This can simply be all of the partitions on the CRD ESGF server, but specifying 
 The wrapper uses three steps to publish, all done by calling `publish` from the working dir using different command-line arguments (`publish` is an alias for `publish.py`).
 The first is dataset discovery:
 ```
-publish -d -dreq
+publish -d
 ```
 which generates a file `datasets.json` specifying the datasets to publish.
-The basic option for dataset discovery is `-d`, but including the `-dreq` ("data request") flag to filter for requested variables is recommended (see below).
 The `datasets.json` file is the input for the next two steps, generating mapfiles and then publishing. 
-These are done in different conda envs, which are specified in `config-publisher.yaml` (the step will abort if the correct env is not activated).
+These are done in different conda envs, which are specified in `config-publisher.yaml`.
+The step will abort if the correct env is not activated, and a message will be displayed on stdout saying how to activate the correct env.
 To generate mapfiles, activate the required environment and then run:
 ```
 publish -m
@@ -78,15 +78,19 @@ Displaying the commands is also useful for testing the publisher by cut-pasting 
 
 ### Data request
 
-To retain only request datasets, based on a project's data request, include the `-dreq` option for dataset discovery:
-```
-publish -d -dreq
-```
+By default the discovered datasets are filtered by the project's data request, retaining only requested variables.
 This makes use of an input file specifying the variables requested for each experiment, provided in `input/`. 
 If setting up a new project and filtering by data request is desired, a file specifying its requested variables will need to be provided and the relevant functions in `tools.py` updated accordingly.
 
+Filtering by data request can be turned off with the `-ndreq` ("no data request") flag:
+```
+publish -d -ndreq
+```
+Of course this option should be used with caution.
+One application for it is [dataset inventory](#inventory).
+
 Note that information about dataset size and filenames is included in the produced `datasets.json` file.
-This is useful to find out what volume of data will be published, and potentially to check for large datasets that might cause publisher problems (see below).
+This is useful to find out what volume of data will be published, and potentially to check for [large datasets](#large-datasets) that might cause publisher problems.
 
 ### Stamp of Approval
 
@@ -120,7 +124,7 @@ Having the `--no-xarray` option for `publish` is a convenience to avoid having t
 The `datasets.json` file is basically an inventory of datasets in the paths specified by `config-datasets.json`, which is then filtered in various ways including (by default) searching ESGF to see which datasets are already published and checking if variables are approved for publication (the "Stamp of Approval").
 To simply produce an inventory of all local datasets, invoke the discovery step using the `-nes` ("no ESGF search") and `-nv` ("no validation") flags:
 ```
-publish -d -nes -nv
+publish -d -nes -nv -ndreq
 ```
 with `keep` and `exclude` in `config-datasets.yaml` being empty (unless some filtering is desired).
 
@@ -133,6 +137,8 @@ This config files have flexibility for other projects besides CMIP6, e.g. a `DRS
 As of April 2025 only CMIP6 publishing has been tested, but it should be adaptable to, for example, CMIP7 or CORDEX-CMIP6 publishing.
 
 Specifying publishing commands in `config-publisher.yaml` is intended to make the wrapper adaptable to future changes that may occur in the ESGF publishing software.
+
+If future ESGF publishing includes mandatory quality control steps such as running [PrePARE](https://esg-publisher.readthedocs.io/en/main/cmor.html) or similar software, they could be incorporated into this wrapper.
 
 ### History
 

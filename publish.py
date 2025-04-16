@@ -49,8 +49,8 @@ parser.add_argument('-dry', '--dry-run', action='store_true', default=False,
                     help='show commands but don\'t execute them')
 parser.add_argument('-nes', '--no-esgf-search', action='store_true', default=False,
                     help='turn off ESGF search that checks whether datasets are already published')
-parser.add_argument('-dreq', '--check-data-request', action='store_true', default=False,
-                    help='only retain requested variables (based on the data request)')
+parser.add_argument('-ndreq', '--no-data-request', action='store_true', default=False,
+                    help='turn off filtering based on the data request')
 parser.add_argument('-max', '--max-size', type=str,
                     help='maximum size of dataset to retain, examples: "1 GB", 1GB, 1G')
 parser.add_argument('-min', '--min-size', type=str,
@@ -185,14 +185,20 @@ if args.datasets:
         print(f'  --> excluded {n-len(datasets)} datasets that had zero size and/or no valid files')
 
     # Filter based on other criteria
-    if not args.no_validation:
+    do_validation = not args.no_validation
+    check_data_request = not args.no_data_request
+    if do_validation:
         # Check stamp of approval and other validation criteria
         validation_file = os.path.join(repo_path, 'input/validation_variables.json')
         datasets = publication_checks(datasets, validation_file)
-    if args.check_data_request:
+    else:
+        print('WARNING: data validation (Stamp of Approval) filtering is off')
+    if check_data_request:
         # Check which datasets are requested in the project's data request, exclude those that aren't
         validation_file = get_dreq_validation_file(project, repo_path)
         datasets = data_request_checks(datasets, validation_file)
+    else:
+        print('WARNING: data request filtering is off')
 
     dataset_sep = '.'
     dataset_parameters = [s.strip('{').strip('}') for s in dataset_template.split(dataset_sep)]

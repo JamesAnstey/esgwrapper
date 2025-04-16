@@ -194,7 +194,8 @@ def data_request_checks(datasets, validation_file, verbose=False):
                 keep.add(dataset_id)
         n = len(datasets)
         datasets = {s: datasets[s] for s in keep}
-        print(f'Retained {len(datasets)} requested datasets (excluded {n-len(datasets)} datasets that were not requested)')
+        print(f'Retained {len(datasets)} datasets after filtering by data request ' +
+              f'(excluded {n-len(datasets)} datasets that were not requested)')
 
     else:
         raise ValueError(f'Need to specify how to filter variables based {project} data request')
