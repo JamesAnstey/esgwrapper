@@ -2,6 +2,7 @@ mapfiles
 inventory
 tmp
 datasets.json
+inventory.json
 .tmp_esgf_search
 work
 

@@ -29,17 +29,22 @@ parser.add_argument('-c', '--config', type=str, default='config-datasets.yaml',
                     help='name of config file containing datasets to publish, default: %(default)s')
 # Define different publishing actions as input flags
 actions = OrderedDict({
-    'datasets' : {
-        'short' : '-d', 
-        'help' : 'find datasets to publish and write info on them to ' + datasets_file
+    'datasets': {
+        'short': '-d',
+        'help': 'find datasets to publish and write info on them to ' + datasets_file
     },
-    'mapfile' : {
-        'short' : '-m',
-        'help' : 'generate mapfiles'
+    'mapfile': {
+        'short': '-m',
+        'help': 'generate mapfiles'
     },
-    'publish' : {
-        'short' : '-p',
-        'help' : 'publish to ESGF'
+    'publish': {
+        'short': '-p',
+        'help': 'publish to ESGF'
+    },
+    'inventory': {
+        'short': '-i',
+        'help': 'do datasets inventory ' +
+                '(equivalent to this set of options: -d -nesgf -ndreq -nval -df inventory.json)'
     }
 })
 for action, d in actions.items():
@@ -47,10 +52,6 @@ for action, d in actions.items():
 # Additional arguments
 parser.add_argument('-dry', '--dry-run', action='store_true', default=False,
                     help='show commands but don\'t execute them')
-parser.add_argument('-nes', '--no-esgf-search', action='store_true', default=False,
-                    help='turn off ESGF search that checks whether datasets are already published')
-parser.add_argument('-ndreq', '--no-data-request', action='store_true', default=False,
-                    help='turn off filtering based on the data request')
 parser.add_argument('-max', '--max-size', type=str,
                     help='maximum size of dataset to retain, examples: "1 GB", 1GB, 1G')
 parser.add_argument('-min', '--min-size', type=str,
@@ -59,7 +60,11 @@ parser.add_argument('-nxr', '--no-xarray', action='store_true', default=False,
                     help='use --no-xarray argument to esgpublish (prevents failure on large datasets)')
 parser.add_argument('-df', '--datasets-file', type=str, default=datasets_file,
                     help='name of datasets output json file')
-parser.add_argument('-nv', '--no-validation', action='store_true', default=False,
+parser.add_argument('-nesgf', '--no-esgf-search', action='store_true', default=False,
+                    help='turn off ESGF search that checks whether datasets are already published')
+parser.add_argument('-ndreq', '--no-data-request', action='store_true', default=False,
+                    help='turn off filtering based on the data request')
+parser.add_argument('-nval', '--no-validation', action='store_true', default=False,
                     help='turn off checking of validation list (Stamp of Approval) - use with caution!')
 args = parser.parse_args()
 
@@ -96,8 +101,17 @@ with open(config_file) as f:
     print('Loaded ' + config_file)
 
 ##############################################################################
-if args.datasets:
+if args.datasets or args.inventory:
     # Determine datasets to publish, write them to datasets_file
+
+    search_esgf = not args.no_esgf_search
+    check_data_request = not args.no_data_request
+    do_validation = not args.no_validation
+    if args.inventory:
+        search_esgf = False
+        check_data_request = False
+        do_validation = False
+        datasets_file = 'inventory.json'
 
     get_size = True
     if args.max_size:
@@ -185,8 +199,6 @@ if args.datasets:
         print(f'  --> excluded {n-len(datasets)} datasets that had zero size and/or no valid files')
 
     # Filter based on other criteria
-    do_validation = not args.no_validation
-    check_data_request = not args.no_data_request
     if do_validation:
         # Check stamp of approval and other validation criteria
         validation_file = os.path.join(repo_path, 'input/validation_variables.json')
@@ -204,7 +216,7 @@ if args.datasets:
     dataset_parameters = [s.strip('{').strip('}') for s in dataset_template.split(dataset_sep)]
     param_unique_values = get_unique_param_values(datasets, dataset_parameters)
 
-    if not args.no_esgf_search:
+    if search_esgf:
         # Check which datasets are already published
         index_node = config_pub['search_esgf']['index_node']
         print(f'Checking for already published datasets by searching {index_node}')
@@ -241,7 +253,7 @@ if args.datasets:
         'datasets' : datasets
     })
     if get_size:
-        # Report total size of publishable datasets
+        # Report total size of datasets
         size = 0
         for dataset_id, info in datasets.items():
             size += info['size']
@@ -249,7 +261,10 @@ if args.datasets:
         out['Header'].update({
             'total size (all datasets)': total_size
         })
-        print(f'Total size of publishable datasets: {total_size}')
+        msg = f'Total size of publishable datasets: {total_size}'
+        if args.inventory:
+            msg = f'Total size of inventoried datasets: {total_size}'
+        print(msg)
     filepath = datasets_file
     with open(filepath, 'w') as f:
         json.dump(out, f, indent=4)

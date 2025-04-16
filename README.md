@@ -8,7 +8,7 @@ Thin wrapper around the [ESGF publishing software](https://esg-publisher.readthe
 ### Setup
 
 The CRD ESGF server cannot see the ECCC science network gitlab, so the wrapper can be "installed" on the server by cloning it to science and then copying the required files to the server, for which `server_sync.py` is a convenience utility:
-```
+```bash
 git clone git@gitlab.science.gc.ca:rja001/esgwrapper.git
 cd esgwrapper
 ./server_sync.py send *.py *.sh *.yaml input
@@ -18,13 +18,13 @@ cd esgwrapper
 ### Workflow
 
 Starting from science (e.g. `hprc-vis`):
-```
+```bash
 ssh acrnpub@eccc-esgf.collab.science.gc.ca
 cd /esg/publish/esgwrapper/
 source setup.sh
 ```
 Then set up a working dir for the publishing:
-```
+```bash
 mkdir -p work/name_of_working_dir
 cd work/name_of_working_dir
 cp ../../config-datasets.yaml .
@@ -41,7 +41,7 @@ This can simply be all of the partitions on the CRD ESGF server, but specifying 
 
 The wrapper uses three steps to publish, all done by calling `publish` from the working dir using different command-line arguments (`publish` is an alias for `publish.py`).
 The first is dataset discovery:
-```
+```bash
 publish -d
 ```
 which generates a file `datasets.json` specifying the datasets to publish.
@@ -49,16 +49,15 @@ The `datasets.json` file is the input for the next two steps, generating mapfile
 These are done in different conda envs, which are specified in `config-publisher.yaml`.
 The step will abort if the correct env is not activated, and a message will be displayed on stdout saying how to activate the correct env.
 To generate mapfiles, activate the required environment and then run:
-```
+```bash
 publish -m
 ```
 To publish datasets to ESGF, activate the required environment and then run:
-```
+```bash
 publish -p
 ```
 
 Verification of published datasets can be done by any available ESGF search method, such as with the [browser interface](https://aims2.llnl.gov/search) or a script-based tool like [search_esgf](https://gitlab.com/JamesAnstey/search_esgf).
-
 
 Invoke `publish -h` to see the various options available.
 Additional explanation of some of these is given below.
@@ -69,7 +68,7 @@ Running the above commands in persistent shell sessions, such as with ThinLinc, 
 ### Test commands before publishing
 
 To do a dry run of the mapfile or publish steps, invoke with the `-dry` option, e.g.
-```
+```bash
 publish -p -dry
 ```
 which will display the commands to stdout without running them.
@@ -83,7 +82,7 @@ This makes use of an input file specifying the variables requested for each expe
 If setting up a new project and filtering by data request is desired, a file specifying its requested variables will need to be provided and the relevant functions in `tools.py` updated accordingly.
 
 Filtering by data request can be turned off with the `-ndreq` ("no data request") flag:
-```
+```bash
 publish -d -ndreq
 ```
 Of course this option should be used with caution.
@@ -96,24 +95,24 @@ This is useful to find out what volume of data will be published, and potentiall
 
 By default the "Stamp of Approval" is checked, blocking publication for unapproved variables (i.e., variables that have not been cleared for publication following examination by relevant scientists).
 Information used by this check is stored in `input/validation_variables.json`.
-The `-nv` option turns off this check (e.g. `publish -d -nv`).
+The `-nval` option turns off this check (e.g. `publish -d -nval`).
 However the check is intended to prevent publication of unvalidated data and it should **not** be turned off without good reason.
 
 ### Large datasets
 
 If publishing large datasets, bigger than about 30 GB, v5.24 of the publisher can freeze due to memory issues on our system (as of April 2025).
 [This was patched](https://github.com/ESGF/esg-publisher/issues/252) and the patch installed in the ESGF server's `esgf-pub524` env by:
-```
+```bash
 pip install --upgrade --no-deps --force-reinstall 'git+https://github.com/sashakames/esg-publisher@patch-5.2.5-ncscan#subdirectory=src/python'
 ```
 The option can be used for large datasets by first doing dataset discovery with a minimum size cutoff:
-```
+```bash
 publish -d -min 20G
 ```
 for example to only retain datasets bigger than 20 GB in the `datasets.json` file. 
 (There is also a `-max` option to retain only datasets smaller than a certain size; the `-min` and `-max` options can also be combined to search for datasets within a size range.)
 And then, after mapfile generation, invoke using the `--no-xarray` option:
-```
+```bash
 publish -p --no-xarray
 ```
 (Equivalently, the `esgpublish` command specified in `config-publisher.yaml` could be updated to include the `--no-xarray` argument, however this could be error-prone. 
@@ -122,11 +121,15 @@ Having the `--no-xarray` option for `publish` is a convenience to avoid having t
 ### Inventory
 
 The `datasets.json` file is basically an inventory of datasets in the paths specified by `config-datasets.json`, which is then filtered in various ways including (by default) searching ESGF to see which datasets are already published and checking if variables are approved for publication (the "Stamp of Approval").
-To simply produce an inventory of all local datasets, invoke the discovery step using the `-nes` ("no ESGF search") and `-nv` ("no validation") flags:
-```
-publish -d -nes -nv -ndreq
+To simply produce an inventory of all local datasets, invoke the discovery step using the `-nesgf` ("no ESGF search") and `-nval` ("no validation") flags:
+```bash
+publish -d -nesgf -ndreq -nval
 ```
 with `keep` and `exclude` in `config-datasets.yaml` being empty (unless some filtering is desired).
+For convnience, option `-i` does the same thing as above, and also renames the output file `inventory.json`:
+```bash
+publish -i
+```
 
 
 ## Other information
