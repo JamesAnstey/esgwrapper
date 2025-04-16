@@ -79,6 +79,7 @@ if not os.path.exists(config_file):
     raise OSError('Config file not found: ' + config_file)
 with open(config_file) as f:
     config = yaml.safe_load(f)
+    print('Loaded ' + config_file)
 
 repo_path = os.environ['REPO_PATH']
 if not os.path.exists(repo_path):
@@ -92,6 +93,7 @@ if not os.path.exists(config_file):
     raise OSError('Config file not found: ' + config_file)
 with open(config_file) as f:
     config_pub = yaml.safe_load(f)
+    print('Loaded ' + config_file)
 
 ##############################################################################
 if args.datasets:
