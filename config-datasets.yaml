@@ -2,8 +2,9 @@
 project: cmip6
 
 datasets:
-  CMIP6/CMIP/CCCma/CanESM5-1/piControl/r1i1p1f1/Omon
-  CMIP6/DCPP/CCCma/CanESM5/dcppB-forecast/s2022-r1i1p2f1/Amon
+  - CMIP6/DCPP/CCCma/CanESM5/dcppB-forecast/s2022-r1i1p2f1/Amon
+  - CMIP6/DCPP/CCCma/CanESM5/dcppB-forecast/s2022-r2i1p2f1/Amon
+  # - CMIP6/CMIP/CCCma/CanESM5-1/piControl/r1i1p1f1/Omon
 
 keep: 
   table_id : [Amon, day, 3hr, Omon]
@@ -13,15 +14,15 @@ exclude:
   experiment_id : historical
 
 paths:
-  /esgA/data/AR6
-  /esgB/data/AR6
-  /esgC/data/AR6
-  /esgD/data/AR6
-  /esgE/data/AR6
-  /esgF/data/AR6
-  /esgG/data/AR6
-  /esgH/data/AR6
-  /esgI/data/AR6
-  #/space/hall5/sitestore/eccc/crd/ccrn/model_output/CMIP6/final/
+  - /esgA/data/AR6
+  - /esgB/data/AR6
+  - /esgC/data/AR6
+  - /esgD/data/AR6
+  - /esgE/data/AR6
+  - /esgF/data/AR6
+  - /esgG/data/AR6
+  - /esgH/data/AR6
+  - /esgI/data/AR6
+  - /space/hall5/sitestore/eccc/crd/ccrn/model_output/CMIP6/final/
 
 

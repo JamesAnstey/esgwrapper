@@ -103,12 +103,12 @@ if args.datasets:
     if args.min_size:
         min_size = parse_file_size_str(args.min_size)
 
-    base_paths = config['paths'].split()  # top-level paths to search at
-    dataset_paths = config['datasets'].split()  # datasets to search (dir path for some level in the DRS dir tree)
+    base_paths = config['paths']  # top-level paths to search at
+    dataset_paths = config['datasets']  # datasets to search (dir path for some level in the DRS dir tree)
 
     dataset_template = config_pub['DRS'][project]['dataset']
     path_template = config_pub['DRS'][project]['path']
-    # file_template = config_pub['DRS'][project]['file']
+    # file_template = config_pub['DRS'][project]['file']  # not currently needed (but might be for some projects?)
 
     datasets = {}
     searched_base_paths = []
