@@ -172,7 +172,7 @@ if args.datasets or args.inventory:
         print(f'Keeping datasets with size up to {args.max_size} ({max_size} B)')
         keep = set()
         for dataset_id, info in datasets.items():
-            if info['size'] <= max_size:
+            if info['size (bytes)'] <= max_size:
                 keep.add(dataset_id)
         n = len(datasets)
         datasets = {s: datasets[s] for s in keep}
@@ -181,7 +181,7 @@ if args.datasets or args.inventory:
         print(f'Keeping datasets with size at least {args.min_size} ({min_size} B)')
         keep = set()
         for dataset_id, info in datasets.items():
-            if info['size'] >= min_size:
+            if info['size (bytes)'] >= min_size:
                 keep.add(dataset_id)
         n = len(datasets)
         datasets = {s: datasets[s] for s in keep}
@@ -191,7 +191,7 @@ if args.datasets or args.inventory:
     if get_size:
         exclude = set()
         for dataset_id, info in datasets.items():
-            if info['size'] == 0 or info['no. of files'] == 0:
+            if info['size (bytes)'] == 0 or info['no. of files'] == 0:
                 exclude.add(dataset_id)
         n = len(datasets)
         keep = [s for s in datasets if s not in exclude]
@@ -256,7 +256,7 @@ if args.datasets or args.inventory:
         # Report total size of datasets
         size = 0
         for dataset_id, info in datasets.items():
-            size += info['size']
+            size += info['size (bytes)']
         total_size = file_size_str(size)
         out['Header'].update({
             'total size (all datasets)': total_size

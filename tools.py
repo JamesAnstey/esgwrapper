@@ -66,7 +66,8 @@ def find_datasets(base_path, dataset_path, dataset_template, path_template, get_
                 for filename in dataset_files:
                     size += os.stat(os.path.join(dirpath, filename)).st_size
                 datasets[dataset_id].update({
-                    'size' : size, 'size_str' : file_size_str(size)
+                    # 'size' : size, 'size_str' : file_size_str(size)
+                    'size (bytes)' : size, 'size (human readable)' : file_size_str(size)
                 })
 
     return datasets
