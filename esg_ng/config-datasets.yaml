@@ -11,7 +11,6 @@ keep:
   frequency: [mon]
 
 exclude:
-  # variable_id : [agessc, areacello, chl, chlos, deptho, detoc, detocos]
   # experiment_id : historical
 
 paths:

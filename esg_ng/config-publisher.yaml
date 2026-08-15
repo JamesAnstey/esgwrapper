@@ -1,17 +1,22 @@
 
 mapfile:
-  conda env: esgf-prep
+  # conda env: esgf-prep
+  venv: /home/scrd106/rja001/venv/pub_test
   commands: [
-    'esgmapfile make -i /datalocal/config/esgcet/ --project {project} {dataset_path} --outdir {mapfile_path}'
+    # 'esgmapfile make -i /datalocal/config/esgcet/ --project {project} {dataset_path} --outdir {mapfile_path}',
+    'esgmapfile make --project {project} --outdir {mapfile_path} --directory {dataset_path}'
   ]
   mapfile_dir : mapfiles
-  mapfile_subdir: '{project}/{activity_drs}/{institution_id}/{source_id}/{experiment_id}/{member_id}'
+  mapfile_subdir: 
+    cmip7: '{drs_specs}/{mip_era}/{activity_id}/{institution_id}/{source_id}/{experiment_id}/{variant_label}'
   clobber: False
 
 publish:
-  conda env: esgf-pub524
+  # conda env: esgf-pub524
+  venv: /home/scrd106/rja001/venv/pub_test
   commands: [
     'esgpublish --map {mapfile} -cfg /home/acrnpub/.esg/esg.yaml --no-auth',
+    
   ]
 
 search_esgf: 
