@@ -1,0 +1,60 @@
+# ESGF-NG publisher config file
+# Based on example from Rhys Evans @ CEDA, 27 Jul 2026
+
+
+test: false
+dry_run: false  # ?
+
+
+cmip6_clone: cmip6plus
+
+data_node: crd-esgf-drc.ec.gc.ca
+data_roots:
+  /CCCMA_NFS/esg/esg_ng: esg_ng
+
+index_UUID: b11b2b29-7aac-44f9-b1a6-789f1acde513  #c0173b0c-5587-437a-a912-ef09b6d14e9c
+globus_index: false
+
+pid_creds:
+  aims4.llnl.gov:
+    password: password
+    port: 7070
+    priority: 1
+    ssl_enabled: true
+    user: esgf-publisher
+    vhost: esgf-pid
+  handle-esgf-trusted.dkrz.de:
+    password:
+    port: 5671
+    priority: 1
+    ssl_enabled: true
+    user: esgf-publisher
+    vhost: esgf-pid
+
+set_replica: false
+silent: false
+skip_prepare: true
+
+user_project_config:
+  cmip6plus:
+    CONST_ATTR:
+      project: CMIP6Plus
+    pid_prefix: '21.14100'
+
+verbose: false
+non_netcdf: false
+disable_citation: true  #false 
+disable_further_info: true
+
+
+# for NG-East production environment
+# cut-paste from: https://github.com/ESGF/esgf-ng-onboarding/blob/main/east-catalog/README.md
+stac_config:
+  token_storage_file: ~/.esgf-publisher.json
+  stac_transaction_api:
+    client_id: 3da9c21e-2bb9-4576-9054-af420514cb7b
+    device_endpoint: https://aai.egi.eu/auth/realms/egi/protocol/openid-connect/auth/device
+    token_endpoint: https://aai.egi.eu/auth/realms/egi/protocol/openid-connect/token
+    base_url: https://transaction.east.esgf.io
+  stac_api: https://discovery.east.esgf.io
+

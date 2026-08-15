@@ -1,0 +1,63 @@
+# ESGF-NG publisher config file
+# Based on example from Rhys Evans @ CEDA, 27 Jul 2026
+
+
+test: false
+dry_run: false  # ?
+
+
+cmip6_clone: cmip6plus
+
+data_node: crd-esgf-drc.ec.gc.ca
+data_roots:
+  /CCCMA_NFS/esg/esg_ng: esg_ng
+
+index_UUID: b11b2b29-7aac-44f9-b1a6-789f1acde513  #c0173b0c-5587-437a-a912-ef09b6d14e9c
+globus_index: false
+
+pid_creds:
+  aims4.llnl.gov:
+    password: password
+    port: 7070
+    priority: 1
+    ssl_enabled: true
+    user: esgf-publisher
+    vhost: esgf-pid
+  handle-esgf-trusted.dkrz.de:
+    password:
+    port: 5671
+    priority: 1
+    ssl_enabled: true
+    user: esgf-publisher
+    vhost: esgf-pid
+
+set_replica: false
+silent: false
+skip_prepare: true
+
+user_project_config:
+  cmip6plus:
+    CONST_ATTR:
+      project: CMIP6Plus
+    pid_prefix: '21.14100'
+
+verbose: false
+non_netcdf: false
+disable_citation: true  #false 
+disable_further_info: true
+
+
+# for NG-West testing environment
+# cut-paste from: https://github.com/ESGF/esgf-ng-onboarding/blob/main/west-catalog/README.md
+stac_config:
+  stac_client:
+    client_id: a34e738b-efa7-49b0-bc11-c74e6c6ec011
+    redirect_uri: https://auth.globus.org/v2/web/auth-code
+  token_storage_file: ~/.esgf-publisher.json
+  stac_transaction_api:
+    client_id: 7467bc71-1417-43f0-a7a9-a26c45757c36
+    access_control_policy: https://esgf2.s3.amazonaws.com/access_control_policy.json
+    scope_string: https://auth.globus.org/scopes/7467bc71-1417-43f0-a7a9-a26c45757c36/transaction
+    base_url: https://transaction-int.west.esgf.io
+  stac_api: https://discovery-int.west.esgf.io
+
