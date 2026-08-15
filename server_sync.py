@@ -3,13 +3,14 @@
 import argparse
 import os
 
-# Set default path on server to copy to
-# For server eccc-esgf.collab.science.gc.ca (2025 & earlier):
-# repo = 'esgwrapper'
-# For server
-# path = os.path.normpath(f'/esg/publish/{repo}')
-# 
-path = '/datalocal/home/scrd106/esgf_publishing/cmip7_dev'
+import sys
+print('dev version, may not work, may get rid of this')
+sys.exit()
+
+
+repo = 'esgwrapper'
+path = os.path.normpath(f'/esg/publish/{repo}')
+# path = os.path.normpath(f'/esg/publish/test/{repo}')
 
 parser = argparse.ArgumentParser(
     description='sync repo to/from CRD ESGF server (invoke on science HPC)',
