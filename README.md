@@ -2,6 +2,10 @@
 
 Thin wrapper around the [ESGF publishing software](https://esg-publisher.readthedocs.io/en/main/) that finds publishable datasets and loops over publishing commands.
 
+<div style="padding: 15px; background-color: #fff3cd; color: #856404; border-left: 5px solid #ffeeba; border-radius: 4px;">
+  <strong>⚠️ Instructions not yet up to date for CMIP7 publishing to ESGF-NG </strong>
+</div>
+
 
 ## Running
 

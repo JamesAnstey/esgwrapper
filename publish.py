@@ -25,6 +25,10 @@ datasets_file = 'datasets.json'
 parser = argparse.ArgumentParser(
     description='Publish CCCma datasets to ESGF'
     )
+
+parser.add_argument('project', type=str,
+                    help='ESGF project to publish to')
+
 parser.add_argument('-c', '--config', type=str, default='config-datasets.yaml',
                     help='name of config file containing datasets to publish, default: %(default)s')
 # Define different publishing actions as input flags
@@ -93,7 +97,7 @@ if not os.path.exists(repo_path):
 project = config['project']
 
 # Load configuration settings for publishing commands
-config_file = os.path.join(repo_path, 'config-publisher.yaml')
+config_file = os.path.join(repo_path, 'esg_ng', 'config-publisher.yaml')
 if not os.path.exists(config_file):
     raise OSError('Config file not found: ' + config_file)
 with open(config_file) as f:

@@ -1,0 +1,19 @@
+
+project: cmip7
+
+datasets:
+  # - MIP-DRS7/CMIP7/CMIP/CCCma/CanESM5-1/piControl/r1i1p2f1/glb/mon/uas
+  # - MIP-DRS7/CMIP7/CMIP/CCCma/CanESM5-1/piControl/r1i1p2f1/glb/mon/vas
+  - MIP-DRS7/CMIP7
+
+keep: 
+  variable_id : [hfss, vas]
+  frequency: [mon]
+
+exclude:
+  # variable_id : [agessc, areacello, chl, chlos, deptho, detoc, detocos]
+  # experiment_id : historical
+
+paths:
+  # - /CCCMA_NFS/esg/esg_ng
+  - /space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP7/final
