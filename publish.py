@@ -27,7 +27,7 @@ def check_env(config):
     if 'venv' in config:
         env = config['venv']
         env_realpath = os.path.realpath(env)
-        if do_cmds and os.environ('VIRTUAL_ENV') != env_realpath:
+        if do_cmds and os.environ['VIRTUAL_ENV'] != env_realpath:
             cmd = 'source ' + os.path.join(env, 'bin/activate')
             raise OSError(f'To run commands, first do:\n  {cmd}')
     elif 'conda env' in config:

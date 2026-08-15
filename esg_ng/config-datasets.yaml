@@ -7,12 +7,12 @@ datasets:
   - MIP-DRS7/CMIP7
 
 keep: 
-  variable_id : [hfss, vas]
+  variable_id : [vas]
   frequency: [mon]
 
 exclude:
   # experiment_id : historical
 
 paths:
-  # - /CCCMA_NFS/esg/esg_ng
-  - /space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP7/final
+  - /CCCMA_NFS/esg/esg_ng
+  #- /space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP7/final

@@ -6,14 +6,15 @@ mapfile:
   ]
   mapfile_dir : mapfiles
   mapfile_subdir: 
-    cmip7: '{drs_specs}/{mip_era}/{activity_id}/{institution_id}/{source_id}/{experiment_id}/{variant_label}'
+    #cmip7: '{drs_specs}/{mip_era}/{activity_id}/{institution_id}/{source_id}/{experiment_id}/{variant_label}'
+    cmip7: ''
   clobber: False
 
 publish:
   venv: /home/scrd106/rja001/venv/pub_test
   commands: [
     # 'esgpublish --map mapfile_list --config esg_east.yaml',
-    'esgpublish --map {mapfile} --config esg_east.yaml'
+    'esgpublish --map {mapfile} --config $REPO_PATH/esg_ng/esgcet_files/esg_east.yaml'
   ]
 
 search_esgf: 
