@@ -6,4 +6,4 @@ inventory.json
 .tmp_esgf_search
 work
 *.xlsx
-
+__pycache__

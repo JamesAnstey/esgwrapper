@@ -37,14 +37,36 @@ def check_env(config):
     else:
         raise Exception('Need to specify env to run publishing commands')
 
+def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True):
+    '''
+    Execute commands.
+
+    Arguments
+    ---------
+    commands: list[str]
+        List of command templates. Example of one command template:
+        "esgmapfile make --project {project} --outdir {mapfile_path} --directory {dataset_path}"
+    cmd_args: dict
+        Argument:value pairs to substitute into command tempaltes. Example:
+        {'project': 'cmip7'}
+    do_cmds: bool
+        True ==> execute the commands
+        False ==> show the commands that would be executed, but don't execute them
+    '''
+    cmds = []
+    for cmd in commands:
+        cmds.append( cmd.format(**cmd_args) )
+
+    for cmd in cmds:
+        print('\n' + cmd)
+        if do_cmds:
+            os.system(cmd)
+
 def parse_args():
 
     parser = argparse.ArgumentParser(
         description='Publish CCCma datasets to ESGF'
         )
-
-    parser.add_argument('project', type=str,
-                        help='ESGF project to publish to')
 
     parser.add_argument('-c', '--config', type=str, default='config-datasets.yaml',
                         help='name of config file containing datasets to publish, default: %(default)s')
@@ -98,6 +120,17 @@ def parse_args():
 
     return args
 
+def load_config_file(config_file: str) -> dict:
+    '''
+    Load yaml configuration file and return contents as dict.
+    '''
+    if not os.path.exists(config_file):
+        raise OSError('Config file not found: ' + config_file)
+    with open(config_file) as f:
+        config = yaml.safe_load(f)
+        print('Loaded ' + config_file)
+    return config
+
 if __name__ == '__main__':
 
     args = parse_args()
@@ -106,26 +139,16 @@ if __name__ == '__main__':
 
     ##############################################################################
     # Load dataset configuration settings from config file
-    config_file = args.config
-    if not os.path.exists(config_file):
-        raise OSError('Config file not found: ' + config_file)
-    with open(config_file) as f:
-        config = yaml.safe_load(f)
-        print('Loaded ' + config_file)
+    config_dat = load_config_file(args.config)
 
     repo_path = os.environ['REPO_PATH']
     if not os.path.exists(repo_path):
         raise ValueError('Path to esgwrapper code repo is required, received: ' + repo_path)
 
-    project = config['project']
+    project = config_dat['project']
 
     # Load configuration settings for publishing commands
-    config_file = os.path.join(repo_path, 'esg_ng', 'config-publisher.yaml')
-    if not os.path.exists(config_file):
-        raise OSError('Config file not found: ' + config_file)
-    with open(config_file) as f:
-        config_pub = yaml.safe_load(f)
-        print('Loaded ' + config_file)
+    config_pub = load_config_file(os.path.join(repo_path, 'esg_ng', 'config-publisher.yaml'))
 
     ##############################################################################
     if args.datasets or args.inventory:
@@ -146,8 +169,8 @@ if __name__ == '__main__':
         if args.min_size:
             min_size = parse_file_size_str(args.min_size)
 
-        base_paths = config['paths']  # top-level paths to search at
-        dataset_paths = config['datasets']  # datasets to search (dir path for some level in the DRS dir tree)
+        base_paths = config_dat['paths']  # top-level paths to search at
+        dataset_paths = config_dat['datasets']  # datasets to search (dir path for some level in the DRS dir tree)
 
         dataset_template = config_pub['DRS'][project]['dataset']
         path_template = config_pub['DRS'][project]['path']
@@ -169,23 +192,23 @@ if __name__ == '__main__':
         print(f'Found {len(datasets)} datasets')
 
         # Apply filters specified in config-datasets file
-        if config['keep']:
+        if config_dat['keep']:
             print('Keeping datasets with these parameter values:')
-            show_params(config['keep'], indent='  ')
+            show_params(config_dat['keep'], indent='  ')
             keep = set()
             for dataset_id, info in datasets.items():
-                matches = match_params(info['params'], config['keep'])
+                matches = match_params(info['params'], config_dat['keep'])
                 if all(matches.values()):
                     keep.add(dataset_id)
             n = len(datasets)
             datasets = {s: datasets[s] for s in keep}
             print(f'  --> excluded {n-len(datasets)} datasets')
-        if config['exclude']:
+        if config_dat['exclude']:
             print('Excluding datasets with these parameter values:')
-            show_params(config['exclude'], indent='  ')
+            show_params(config_dat['exclude'], indent='  ')
             exclude = set()
             for dataset_id, info in datasets.items():
-                matches = match_params(info['params'], config['exclude'])
+                matches = match_params(info['params'], config_dat['exclude'])
                 if any(matches.values()):
                     exclude.add(dataset_id)
             n = len(datasets)
@@ -297,12 +320,14 @@ if __name__ == '__main__':
             json.dump(out, f, indent=4)
             print(f'Wrote {filepath} with {len(datasets)} datasets')
 
-    del config
+    # config_dat is not used after this point since all info on datasets to be published
+    # should be in the output json file datasets_file.
+    del config_dat
 
     ##############################################################################
     if args.mapfile or args.publish:
 
-        # Load info on datasets
+        # Load info on datasets to publish
         filepath = datasets_file
         with open(filepath, 'r') as f:
             datasets = json.load(f)['datasets']
@@ -314,62 +339,62 @@ if __name__ == '__main__':
 
     ##############################################################################
     if args.mapfile:
-        # Generate mapfiles
-        # These are small files containing info about each dataset to publish, such as its checksum
+        # Generate mapfiles. These are small files containing info about each dataset,
+        # including the checksums of its files.
 
+        # Check that correct env is activated
         check_env(config_pub['mapfile'])
 
-        # mapfile_path_template = config_pub['mapfile']['mapfile_subdir']
+        # Get info to construct mapfile paths
         mapfile_path_template = config_pub['mapfile']['mapfile_subdir'][project]
         mapfile_base_path = config_pub['mapfile']['mapfile_dir']
         if not os.path.exists(mapfile_base_path):
             os.makedirs(mapfile_base_path)
 
-        # Example mapfile name for CMIP6:
-        #   CMIP6.DCPP.CCCma.CanESM5.dcppB-forecast.s2022-r1i1p2f1.Amon.tas.gn.v20190429.map
+        # Get mapfile template, used to determine if a mapfile already exists
         dataset_template = config_pub['DRS'][project]['dataset']
         mapfile_template = dataset_template + os.path.extsep + 'map'
+        # Example mapfile name for CMIP6:
+        #   CMIP6.DCPP.CCCma.CanESM5.dcppB-forecast.s2022-r1i1p2f1.Amon.tas.gn.v20190429.map
 
+        # Get command template(s)
         commands = config_pub['mapfile']['commands']
 
+        # Loop over datasets to create a mapfile for each one
         n = len(datasets)
         k = 0
         for dataset_id, info in datasets.items():
             k += 1
             print(f'\nGenerating mapfile for dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
-            d = {
-                'mapfile_path' : os.path.join(mapfile_base_path, mapfile_path_template.format(**info['params'])),
+            cmd_args = {
+                'mapfile_path' : os.path.normpath(os.path.join(
+                    mapfile_base_path, mapfile_path_template.format(**info['params'])
+                    )),
                 'dataset_path' : info['path'],
                 'project' : project,
             }
             if not config_pub['mapfile']['clobber']:
                 filename = mapfile_template.format(**info['params'])
-                filepath = os.path.join(d['mapfile_path'], filename)
+                filepath = os.path.join(cmd_args['mapfile_path'], filename)
                 if os.path.exists(filepath):
                     print('Not overwriting existing mapfile: ' + filepath)
                     continue
 
-            cmds = []
-            for cmd in commands:
-                cmds.append( cmd.format(**d) )
-
-            for cmd in cmds:
-                print('\n' + cmd)
-                if do_cmds:
-                    os.system(cmd)
-
+            # Run commands to generate mapfile for this dataset
+            exec_cmds(commands, cmd_args, do_cmds)
 
     ##############################################################################
     if args.publish:
-        # Publish to ESGF
-        # (This assumes that mapfiles have already been generated)
+        # Publish to ESGF. This assumes that mapfiles have already been generated.
 
+        # Check that correct env is activated
         check_env(config_pub['publish'])
 
-        # mapfile_path_template = config_pub['mapfile']['mapfile_subdir']
+        # Get info to construct mapfile paths
         mapfile_path_template = config_pub['mapfile']['mapfile_subdir'][project]
         mapfile_base_path = config_pub['mapfile']['mapfile_dir']
 
+        # Get command template(s)
         commands = config_pub['publish']['commands']
         if args.no_xarray:
             # Convenience option to add --no-xarray argument to esgpublish command.
@@ -382,27 +407,22 @@ if __name__ == '__main__':
                 if cmd.startswith('esgpublish'):
                     commands[k] = cmd + ' --no-xarray'
 
+        # Loop over datasets to publish each one
         n = len(datasets)
         k = 0
         for dataset_id, info in datasets.items():
             k += 1
             print(f'\nPublishing dataset ({k} of {n}): {dataset_id}')
 
+            # Find mapfile for this dataset
             mapfile_path = os.path.join(mapfile_base_path, mapfile_path_template.format(**info['params']))
             mapfile = dataset_id + os.path.extsep + 'map'
-            d = {
-                'mapfile' : os.path.join(mapfile_path, mapfile)
+            cmd_args = {
+                'mapfile' : os.path.normpath(os.path.join(mapfile_path, mapfile))
             }
-            if not os.path.exists(d['mapfile']):
-                print('Mapfile not found: ' + d['mapfile'])
+            if not os.path.exists(cmd_args['mapfile']):
+                print('Mapfile not found: ' + cmd_args['mapfile'])
                 continue
 
-            cmds = []
-            for cmd in commands:
-                cmds.append( cmd.format(**d) )
-
-            for cmd in cmds:
-                print('\n' + cmd)
-                if do_cmds:
-                    os.system(cmd)
-
+            # Run commands to publish this dataset
+            exec_cmds(commands, cmd_args, do_cmds)
