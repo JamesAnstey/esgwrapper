@@ -10,6 +10,7 @@ import argparse
 import datetime
 import json
 import os
+import subprocess
 import sys
 import yaml
 from collections import OrderedDict
@@ -27,19 +28,26 @@ def check_env(config):
     if 'venv' in config:
         env = config['venv']
         env_realpath = os.path.realpath(env)
-        if do_cmds and os.environ['VIRTUAL_ENV'] != env_realpath:
-            cmd = 'source ' + os.path.join(env, 'bin/activate')
-            raise OSError(f'To run commands, first do:\n  {cmd}')
+        if do_cmds:
+            if 'VIRTUAL_ENV' not in os.environ:
+                raise ValueError('No venv is activated')
+            if os.environ['VIRTUAL_ENV'] != env_realpath:
+                cmd = 'source ' + os.path.join(env, 'bin/activate')
+                raise OSError(f'To run commands, first do:\n  {cmd}')
     elif 'conda env' in config:
         env = config['conda env']
-        if do_cmds and os.environ['CONDA_DEFAULT_ENV'] != env:
-            raise OSError('To run commands, first do:\n  conda activate ' + env)
+        if do_cmds:
+            if 'CONDA_DEFAULT_ENV' not in os.environ:
+                raise ValueError('No conda env is activated')
+            if os.environ['CONDA_DEFAULT_ENV'] != env:
+                raise OSError('To run commands, first do:\n  conda activate ' + env)
     else:
         raise Exception('Need to specify env to run publishing commands')
 
-def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True):
+def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True) -> int:
     '''
-    Execute commands.
+    Execute list of commands.
+    Checks return codes of commands and stops if a command fails.
 
     Arguments
     ---------
@@ -47,20 +55,31 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True):
         List of command templates. Example of one command template:
         "esgmapfile make --project {project} --outdir {mapfile_path} --directory {dataset_path}"
     cmd_args: dict
-        Argument:value pairs to substitute into command tempaltes. Example:
+        Argument:value pairs to substitute into command templates. Example:
         {'project': 'cmip7'}
     do_cmds: bool
         True ==> execute the commands
         False ==> show the commands that would be executed, but don't execute them
+
+    Returns
+    -------
+    exit_status: int
+        Exit status of last command executed (0 = success).
     '''
     cmds = []
     for cmd in commands:
         cmds.append( cmd.format(**cmd_args) )
 
+    exit_status = None
     for cmd in cmds:
         print('\n' + cmd)
         if do_cmds:
-            os.system(cmd)
+            result = subprocess.run(cmd.split(), capture_output=True, text=True)
+            exit_status = result.returncode
+            if exit_status != 0:
+                break
+
+    return exit_status
 
 def parse_args():
 
@@ -381,7 +400,7 @@ if __name__ == '__main__':
                     continue
 
             # Run commands to generate mapfile for this dataset
-            exec_cmds(commands, cmd_args, do_cmds)
+            exit_status = exec_cmds(commands, cmd_args, do_cmds)
 
     ##############################################################################
     if args.publish:
@@ -425,4 +444,4 @@ if __name__ == '__main__':
                 continue
 
             # Run commands to publish this dataset
-            exec_cmds(commands, cmd_args, do_cmds)
+            exit_status = exec_cmds(commands, cmd_args, do_cmds)
