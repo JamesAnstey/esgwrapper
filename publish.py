@@ -84,21 +84,36 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries
                     print(f'Returned exit status={exit_status}, retrying (attempt {attempt} of {max_attempts})')
                 print(cmd)
 
+
                 # result = subprocess.run(cmd.split(), capture_output=True, text=True)
                 # exit_status = result.returncode
 
-                with subprocess.Popen(
+
+            #     with subprocess.Popen(
+            #         cmd.split(),
+            #         stdout=subprocess.PIPE,
+            #         stderr=subprocess.STDOUT,  # Redirects stderr to stdout so you catch errors too
+            #         text=True,                 # Returns strings instead of bytes (Python 3.7+)
+            #         bufsize=1                  # Line-buffered
+            #     ) as p:
+            #         # Read output line by line in real-time
+            #         for line in p.stdout:
+            #             print(line, end="")    # end="" prevents double newlines
+            #    # Get the final exit code
+            #     exit_status = p.returncode
+
+
+                p = subprocess.Popen(
                     cmd.split(),
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,  # Redirects stderr to stdout so you catch errors too
+                    stdout=sys.stdout,
+                    stderr=sys.stderr,
                     text=True,                 # Returns strings instead of bytes (Python 3.7+)
                     bufsize=1                  # Line-buffered
-                ) as p:
-                    # Read output line by line in real-time
-                    for line in p.stdout:
-                        print(line, end="")    # end="" prevents double newlines
-               # Get the final exit code
+                )
+                p.communicate()
+                # Get the final exit code
                 exit_status = p.returncode
+
 
                 if exit_status == 0:
                     # Command has succeeded, so exit the retry loop
