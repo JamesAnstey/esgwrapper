@@ -44,7 +44,7 @@ def check_env(config):
     else:
         raise Exception('Need to specify env to run publishing commands')
 
-def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True) -> int:
+def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries: int = 0) -> int:
     '''
     Execute list of commands.
     Checks return codes of commands and stops if a command fails.
@@ -60,6 +60,9 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True) -> int:
     do_cmds: bool
         True ==> execute the commands
         False ==> show the commands that would be executed, but don't execute them
+    retries: int
+        Number of times to retry a command if it fails.
+        retries = 0 ==> only try it once
 
     Returns
     -------
@@ -71,14 +74,29 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True) -> int:
         cmds.append( cmd.format(**cmd_args) )
 
     exit_status = None
+    attempt = 1
+    max_attempts = 1 + retries
     for cmd in cmds:
-        print('\n' + cmd)
         if do_cmds:
-            result = subprocess.run(cmd.split(), capture_output=True, text=True)
-            exit_status = result.returncode
+            while attempt <= max_attempts:
+                if attempt > 1:
+                    # Show message saying this is a retry
+                    print(f'Returned exit status={exit_status}, retrying (attempt {attempt} of {max_attempts})')
+                print(cmd)
+                result = subprocess.run(cmd.split(), capture_output=True, text=True)
+                exit_status = result.returncode
+                if exit_status == 0:
+                    # Command has succeeded, so exit the retry loop
+                    break
+                else:
+                    # Command failed
+                    attempt += 1
             if exit_status != 0:
+                # Command failed, so don't attempt any subsequent commands
                 break
-
+        else:
+            # Show command that would have been executed
+            print(cmd)
     return exit_status
 
 def parse_args():
@@ -128,6 +146,8 @@ def parse_args():
                         help='turn off filtering based on the data request')
     parser.add_argument('-nval', '--no-validation', action='store_true', default=False,
                         help='turn off checking of validation list (Stamp of Approval) - use with caution!')
+    parser.add_argument('-r', '--retries', type=int, default=0,
+                        help='number of times to retry publishing command if it fails (default: 0)')
 
     args = parser.parse_args()
 
@@ -444,4 +464,4 @@ if __name__ == '__main__':
                 continue
 
             # Run commands to publish this dataset
-            exit_status = exec_cmds(commands, cmd_args, do_cmds)
+            exit_status = exec_cmds(commands, cmd_args, do_cmds, retries=args.retries)
