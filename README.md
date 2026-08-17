@@ -1,47 +1,24 @@
 # esgwrapper
 
-Thin wrapper around the [ESGF publishing software](https://esg-publisher.readthedocs.io/en/main/) that finds publishable datasets and loops over publishing commands.
+Wrapper for [ESGF publishing software](https://esg-publisher.readthedocs.io/en/main/) that finds publishable datasets and loops over publishing commands.
 
-<div style="padding: 15px; background-color: #fff3cd; color: #856404; border-left: 5px solid #ffeeba; border-radius: 4px;">
-  <strong>⚠️ Instructions not yet up to date for CMIP7 publishing to ESGF-NG </strong>
-</div>
-
-
-## Running
-
-### Setup
-
-The CRD ESGF server cannot see the ECCC science network gitlab, so the wrapper can be "installed" on the server by cloning it to science and then copying the required files to the server, for which `server_sync.py` is a convenience utility:
-```bash
-git clone git@gitlab.science.gc.ca:rja001/esgwrapper.git
-cd esgwrapper
-./server_sync.py send *.py *.sh *.yaml input
-```
-(The copy location on the server is set in `server_sync.py`.)
 
 ### Workflow
 
-Starting from science (e.g. `hprc-vis`):
+On server where publishing commands will be run:
 ```bash
-ssh acrnpub@eccc-esgf.collab.science.gc.ca
-cd /esg/publish/esgwrapper/
-source setup.sh
-```
-Then set up a working dir for the publishing:
-```bash
-mkdir -p work/name_of_working_dir
+source setup.sh  # must be in repo top-level dir
+mkdir -p work/name_of_working_dir  # set up working dir for publishing
 cd work/name_of_working_dir
-cp ../../config-datasets.yaml .
+cp ../../esg_ng/config-datasets.yaml .
+cp ../../esg_ng/esgcet_files/esg_east.yaml .
 ```
-replacing `name_of_working_dir` with something sensible for the publishing being done.
-It's not necessary to set up a new working dir every time - the reason to set one up is for convenience, so that previous publishing can be easily resumed or added to, based on a previous `config-datasets.yaml` file.
-If re-using a previous working dir, simply cd to it after doing `source setup.sh` as noted above.
+If re-using a previous working dir, simply cd to it after doing `source setup.sh`.
 
 In the working dir, edit `config-datasets.yaml` to specify what datasets to publish by editing its `datasets` list. 
 These entries can be broad (e.g., `CMIP6/CMIP/CCCma/CanESM5-1`) or more granular (e.g. `CMIP6/DCPP/CCCma/CanESM5/dcppB-forecast/s2022-r1i1p2f1/Amon`)
 Additional specificity is possible with the `keep` and `exclude` filters.
 The `paths` list gives all the top-level paths in which to search for datasets.
-This can simply be all of the partitions on the CRD ESGF server, but specifying a subset will speed up the search.
 
 The wrapper uses three steps to publish, all done by calling `publish` from the working dir using different command-line arguments (`publish` is an alias for `publish.py`).
 The first is dataset discovery:
@@ -50,24 +27,16 @@ publish -d
 ```
 which generates a file `datasets.json` specifying the datasets to publish.
 The `datasets.json` file is the input for the next two steps, generating mapfiles and then publishing. 
-These are done in different conda envs, which are specified in `config-publisher.yaml`.
-The step will abort if the correct env is not activated, and a message will be displayed on stdout saying how to activate the correct env.
-To generate mapfiles, activate the required environment and then run:
+These will abort if the correct env is not activated (indicated in `config-publisher.yaml`), and a message will be displayed on stdout saying how to activate the correct env.
+To generate mapfiles:
 ```bash
 publish -m
 ```
-To publish datasets to ESGF, activate the required environment and then run:
+To publish datasets to ESGF:
 ```bash
 publish -p
 ```
-
-Verification of published datasets can be done by any available ESGF search method, such as with the [browser interface](https://aims2.llnl.gov/search) or a script-based tool like [search_esgf](https://gitlab.com/JamesAnstey/search_esgf).
-
-Invoke `publish -h` to see the various options available.
-Additional explanation of some of these is given below.
-
-Running the above commands in persistent shell sessions, such as with ThinLinc, is advised because publishing a lot of data can take a while to run.
-
+The publish command allows for retries in case it fails, e.g. `publish -p -r 2` to retry twice if the first attempt fails.
 
 ### Test commands before publishing
 
@@ -77,9 +46,10 @@ publish -p -dry
 ```
 which will display the commands to stdout without running them.
 This is useful to verify that the wrapper will indeed execute the expected commands.
-Displaying the commands is also useful for testing the publisher by cut-pasting and manually executing them in the shell.
 
 ### Data request
+
+⚠️ **TODO: update for CMIP7 Data Request**
 
 By default the discovered datasets are filtered by the project's data request, retaining only requested variables.
 This makes use of an input file specifying the variables requested for each experiment, provided in `input/`. 
@@ -89,42 +59,31 @@ Filtering by data request can be turned off with the `-ndreq` ("no data request"
 ```bash
 publish -d -ndreq
 ```
-Of course this option should be used with caution.
-One application for it is [dataset inventory](#inventory).
 
-Note that information about dataset size and filenames is included in the produced `datasets.json` file.
+Information about dataset size and filenames is included in the produced `datasets.json` file.
 This is useful to find out what volume of data will be published, and potentially to check for [large datasets](#large-datasets) that might cause publisher problems.
 
 ### Stamp of Approval
 
-By default the "Stamp of Approval" is checked, blocking publication for unapproved variables (i.e., variables that have not been cleared for publication following examination by relevant scientists).
+⚠️ **TODO: update for CMIP7 validations**
+
+By default approval status of a variable is checked, blocking publication for unapproved variables (i.e., variables that have not been cleared for publication following examination by relevant scientists).
 Information used by this check is stored in `input/validation_variables.json`.
 The `-nval` option turns off this check (e.g. `publish -d -nval`).
 However the check is intended to prevent publication of unvalidated data and it should **not** be turned off without good reason.
 
 ### Large datasets
 
-If publishing large datasets, bigger than about 30 GB, v5.24 of the publisher can freeze due to memory issues on our system (as of April 2025).
-[This was patched](https://github.com/ESGF/esg-publisher/issues/252) and the patch installed in the ESGF server's `esgf-pub524` env by:
-```bash
-pip install --upgrade --no-deps --force-reinstall 'git+https://github.com/sashakames/esg-publisher@patch-5.2.5-ncscan#subdirectory=src/python'
-```
 The option can be used for large datasets by first doing dataset discovery with a minimum size cutoff:
 ```bash
 publish -d -min 20G
 ```
 for example to only retain datasets bigger than 20 GB in the `datasets.json` file. 
 (There is also a `-max` option to retain only datasets smaller than a certain size; the `-min` and `-max` options can also be combined to search for datasets within a size range.)
-And then, after mapfile generation, invoke using the `--no-xarray` option:
-```bash
-publish -p --no-xarray
-```
-(Equivalently, the `esgpublish` command specified in `config-publisher.yaml` could be updated to include the `--no-xarray` argument, however this could be error-prone. 
-Having the `--no-xarray` option for `publish` is a convenience to avoid having to update `config-publisher.yaml` based on the size of datasets being published.)
 
 ### Inventory
 
-The `datasets.json` file is basically an inventory of datasets in the paths specified by `config-datasets.json`, which is then filtered in various ways including (by default) searching ESGF to see which datasets are already published and checking if variables are approved for publication (the "Stamp of Approval").
+The `datasets.json` file is basically an inventory of datasets in the paths specified by `config-datasets.json`, which is filtered in various ways including (by default) searching ESGF to see which datasets are already published and checking if variables are approved for publication.
 To simply produce an inventory of all local datasets, invoke the discovery step using the `-nesgf` ("no ESGF search") and `-nval` ("no validation") flags:
 ```bash
 publish -d -nesgf -ndreq -nval
@@ -135,27 +94,10 @@ For convnience, option `-i` does the same thing as above, and also renames the o
 publish -i
 ```
 
-
 ## Other information
 
 ### Adaptability
 
 This config files have flexibility for other projects besides CMIP6, e.g. a `DRS` entry for file and directory naming conventions in `config-publisher.yaml`.
-As of April 2025 only CMIP6 publishing has been tested, but it should be adaptable to, for example, CMIP7 or CORDEX-CMIP6 publishing.
 
 Specifying publishing commands in `config-publisher.yaml` is intended to make the wrapper adaptable to future changes that may occur in the ESGF publishing software.
-
-If future ESGF publishing includes mandatory quality control steps such as running [PrePARE](https://esg-publisher.readthedocs.io/en/main/cmor.html) or similar software, they could be incorporated into this wrapper.
-
-### History
-
-An earlier, more complicated wrapper was used to publish CCCma CMIP6 datasets.
-It was motivated by:
-- ESGF publishing commands being somewhat complex
-- Parallel processing to speed up publishing
-- Logging to keep track of publisher errors and what was already published
-- Quality control by filtering datasets according to the "Stamp of Approval"
-
-Since then, the [ESGF publisher software](https://esg-publisher.readthedocs.io/en/main/) has been updated to make its workflow simpler, more robust, and faster.
-A complex wrapper is not needed (and hard to maintain).
-Further development of `esgwrapper` should keep it as simple as possible.
