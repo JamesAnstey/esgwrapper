@@ -23,9 +23,13 @@ The `paths` list gives all the top-level paths in which to search for datasets.
 The wrapper uses three steps to publish, all done by calling `publish` from the working dir using different command-line arguments (`publish` is an alias for `publish.py`).
 The first is dataset discovery:
 ```bash
-publish -d
+publish -d -c7
 ```
 which generates a file `datasets.json` specifying the datasets to publish.
+The `-c7` option prevents already-published CMIP7 datasets from being included in `datasets.json`.
+
+⚠️ **TODO: replace ad-hoc `-c7` option with a proper ESGF search using the search API or esgpull**
+
 The `datasets.json` file is the input for the next two steps, generating mapfiles and then publishing. 
 These will abort if the correct env is not activated (indicated in `config-publisher.yaml`), and a message will be displayed on stdout saying how to activate the correct env.
 To generate mapfiles:
