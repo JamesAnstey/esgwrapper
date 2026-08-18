@@ -7,6 +7,9 @@ Wrapper for [ESGF publishing software](https://esg-publisher.readthedocs.io/en/m
 
 On server where publishing commands will be run:
 ```bash
+cd /datalocal/home/scrd106/esgf_publishing/cmip7
+git clone git@github.com:JamesAnstey/esgwrapper.git  # skip if it's already there
+cd esgwrapper
 source setup.sh  # must be in repo top-level dir
 mkdir -p work/name_of_working_dir  # set up working dir for publishing
 cd work/name_of_working_dir

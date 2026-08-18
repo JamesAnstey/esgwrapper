@@ -528,3 +528,11 @@ if __name__ == '__main__':
 
             # Run commands to publish this dataset
             exit_status = exec_cmds(commands, cmd_args, do_cmds, retries=args.retries)
+
+            # # If QC report output file was created, move it to a subdir
+            # qc_report_file = f'{dataset_id}.ccreport'
+            # if os.path.exists(qc_report_file):
+
+
+
+

@@ -6,7 +6,8 @@ datasets:
   - MIP-DRS7/CMIP7
 
 keep: 
-  variable_id : [vas]
+  # variable_id : [vas]
+  variable_id : [uas, vas, prsn, rsuscs, rsut, huss, rsdt, prc, snc]
   frequency: [mon]
 
 exclude:
