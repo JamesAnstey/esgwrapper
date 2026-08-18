@@ -10,6 +10,7 @@ import argparse
 import datetime
 import json
 import os
+import requests
 import subprocess
 import sys
 import yaml
@@ -162,6 +163,10 @@ def parse_args():
     parser.add_argument('-r', '--retries', type=int, default=0,
                         help='number of times to retry publishing command if it fails (default: 0)')
 
+    parser.add_argument('-c7', '--cmip7-dev', action='store_true', default=False,
+                        help='TEMPORARY option for use with -d for CMIP7 ESGF-NG publishing')
+    
+
     args = parser.parse_args()
 
     if not any([args.__dict__[action] for action in actions]):
@@ -214,6 +219,12 @@ if __name__ == '__main__':
             check_data_request = False
             do_validation = False
             datasets_file = 'inventory.json'
+        if args.cmip7_dev:
+            search_esgf = False
+            check_data_request = False
+            do_validation = False
+
+            use_esgf_ng_api = True
 
         get_size = True
         if args.max_size:
@@ -338,6 +349,45 @@ if __name__ == '__main__':
                 print('All of the datasets are already published')
             else:
                 print(f'Removed {n-len(datasets)} already-published datasets from publishing list (keeping {len(datasets)})')
+
+
+
+        if use_esgf_ng_api:
+            # Temporary option (Aug 2026) while figuring out best way to query ESGF-NG via api.
+            #
+            # The assumption here is that if a dataset is already published, a URL will exist of the form:
+            #   https://discovery.{where}.esgf.io/collections/CMIP7/items/{dataset_id}
+            # Example:
+            #   https://discovery.east.esgf.io/collections/CMIP7/items/MIP-DRS7.CMIP7.CMIP.CCCma.CanESM5-1.piControl.r1i1p2f1.glb.mon.uas.tavg-h10m-hxy-u.g120.v20190429
+            #
+            # Use this to determine what's already published.
+            if search_esgf:
+                raise Exception('this is a stopgap for proper ESGF search')
+            where = 'east' # must correspond to one that is published to
+            # where = 'west'
+
+            keep = []
+            for dataset_id in datasets:
+                url = f'https://discovery.{where}.esgf.io/collections/CMIP7/items/{dataset_id}'
+                response = requests.get(url).json()
+                # print(url)
+                if 'code' in response:
+                    if response['code'] == "NotFoundError":
+                        # Dataset was not found, therefore is not already published
+                        keep.append(dataset_id)
+
+                        # Example of returned json:
+                        #{"code":"NotFoundError","description":"Item MIP-DRS7.CMIP7.CMIP.CCCma.CanESM5-1.piControl.r1i1p2f1.glb.mon.boovas.tavg-h10m-hxy-u.g120.v20190429 does not exist inside Collection CMIP7"}'
+
+            datasets = {s: datasets[s] for s in keep}
+            if len(datasets) == n:
+                print('None of the datasets are already published')
+            elif len(datasets) == 0:
+                print('All of the datasets are already published')
+            else:
+                print(f'Removed {n-len(datasets)} already-published datasets from publishing list (keeping {len(datasets)})')
+ 
+
 
         datasets = OrderedDict({s : datasets[s] for s in sorted(datasets.keys(), key=str.lower)})
         param_unique_values = get_unique_param_values(datasets, dataset_parameters)
