@@ -214,6 +214,7 @@ if __name__ == '__main__':
         search_esgf = not args.no_esgf_search
         check_data_request = not args.no_data_request
         do_validation = not args.no_validation
+        use_esgf_ng_api = False
         if args.inventory:
             search_esgf = False
             check_data_request = False
