@@ -165,6 +165,8 @@ def parse_args():
 
     parser.add_argument('-c7', '--cmip7-dev', action='store_true', default=False,
                         help='TEMPORARY option for use with -d for CMIP7 ESGF-NG publishing')
+    parser.add_argument('-api', '--api-method', type=int, default=1,
+                        help='TEMPORARY specify how to use restful api to find out what datasets are already published')
     
 
     args = parser.parse_args()
@@ -368,19 +370,49 @@ if __name__ == '__main__':
             # where = 'west'
 
             keep = []
-            for dataset_id in datasets:
-                url = f'https://discovery.{where}.esgf.io/collections/CMIP7/items/{dataset_id}'
+
+            if args.api_method == 1:
+                for dataset_id in datasets:
+                    url = f'https://discovery.{where}.esgf.io/collections/CMIP7/items/{dataset_id}'
+                    response = requests.get(url).json()
+                    # print(url)
+                    if 'code' in response:
+                        if response['code'] == "NotFoundError":
+                            # Dataset was not found, therefore is not already published
+                            keep.append(dataset_id)
+
+                            # Example of returned json:
+                            #{"code":"NotFoundError","description":"Item MIP-DRS7.CMIP7.CMIP.CCCma.CanESM5-1.piControl.r1i1p2f1.glb.mon.boovas.tavg-h10m-hxy-u.g120.v20190429 does not exist inside Collection CMIP7"}'
+
+                datasets = {s: datasets[s] for s in keep}
+
+            elif args.api_method == 2:
+                limit = 10000000000 # set large enough to get all datasets on ESGF
+
+                limit = str(limit)
+                url = f'https://discovery.east.esgf.io/collections/CMIP7/items?fields=id,properties.retracted&limit={limit}'
+                print(url)
                 response = requests.get(url).json()
-                # print(url)
-                if 'code' in response:
-                    if response['code'] == "NotFoundError":
-                        # Dataset was not found, therefore is not already published
-                        keep.append(dataset_id)
 
-                        # Example of returned json:
-                        #{"code":"NotFoundError","description":"Item MIP-DRS7.CMIP7.CMIP.CCCma.CanESM5-1.piControl.r1i1p2f1.glb.mon.boovas.tavg-h10m-hxy-u.g120.v20190429 does not exist inside Collection CMIP7"}'
+                outfile = 'published_datasets.json'
+                with open(outfile, 'w') as f:
+                    json.dump(response, f, indent=2)
+                    print('wrote ' + outfile)
 
-            datasets = {s: datasets[s] for s in keep}
+                # Get list of published dataset id's
+                exclude = []
+                for d in response['features']:
+                    dataset_id = d['id']
+                    retracted = bool(d['properties']['retracted'])
+                    if not retracted:
+                        exclude.append(dataset_id)
+                
+                datasets = {s: datasets[s] for s in datasets if s not in exclude}
+
+            else:
+                raise ValueError(f'Which ad-hoc API method should be used?')
+
+
             if len(datasets) == n:
                 print('None of the datasets are already published')
             elif len(datasets) == 0:
