@@ -1,10 +1,7 @@
 # ESGF-NG publisher config file
-# Based on example from Rhys Evans @ CEDA, 27 Jul 2026
-
 
 test: true
-dry_run: false  # ?
-
+dry_run: false
 
 cmip6_clone: cmip6plus
 
@@ -46,9 +43,8 @@ non_netcdf: false
 disable_citation: true
 disable_further_info: true
 
-
-
-# for NG-East staging environment, cut-paste from https://github.com/ESGF/esgf-ng-onboarding/blob/main/east-catalog/README.md
+# For NG-East staging (testing) environment.
+# This is cut-paste from: https://github.com/ESGF/esgf-ng-onboarding/blob/main/east-catalog/README.md
 stac_config:
   token_storage_file: ~/.esgf-publisher.json
   stac_transaction_api:

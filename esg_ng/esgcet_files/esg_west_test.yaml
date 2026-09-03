@@ -1,10 +1,7 @@
 # ESGF-NG publisher config file
-# Based on example from Rhys Evans @ CEDA, 27 Jul 2026
 
-
-test: false
-dry_run: false  # ?
-
+test: true
+dry_run: false
 
 cmip6_clone: cmip6plus
 
@@ -43,12 +40,11 @@ user_project_config:
 
 verbose: false
 non_netcdf: false
-disable_citation: true  #false 
+disable_citation: true
 disable_further_info: true
 
-
-# for NG-West testing environment
-# cut-paste from: https://github.com/ESGF/esgf-ng-onboarding/blob/main/west-catalog/README.md
+# For NG-West staging (testing) environment.
+# Cut-paste from: https://github.com/ESGF/esgf-ng-onboarding/blob/main/west-catalog/README.md
 stac_config:
   stac_client:
     client_id: a34e738b-efa7-49b0-bc11-c74e6c6ec011
