@@ -165,7 +165,7 @@ def parse_args():
 
     parser.add_argument('-c7', '--cmip7-dev', action='store_true', default=False,
                         help='TEMPORARY option for use with -d for CMIP7 ESGF-NG publishing')
-    parser.add_argument('-api', '--api-method', type=int, default=1,
+    parser.add_argument('-api', '--api-method', type=int, default=2,
                         help='TEMPORARY specify how to use restful api to find out what datasets are already published')
     
 
