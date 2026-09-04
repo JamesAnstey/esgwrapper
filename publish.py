@@ -183,11 +183,17 @@ def parse_args():
                         help='turn off checking of validation list (Stamp of Approval) - use with caution!')
     parser.add_argument('-r', '--retries', type=int, default=0,
                         help='number of times to retry publishing command if it fails (default: 0)')
+    parser.add_argument('-s', '--start', type=int,
+                        help='index to begin with in list of datasets (0 = first dataset)')
+    parser.add_argument('-n', '--number', type=int,
+                        help='number of datasets to use from list of datasets (default: all)')
 
     parser.add_argument('-c7', '--cmip7-dev', action='store_true', default=False,
                         help='TEMPORARY option for use with -d for CMIP7 ESGF-NG publishing')
     parser.add_argument('-api', '--api-method', type=int, default=2,
                         help='TEMPORARY specify how to use restful api to find out what datasets are already published')
+
+
     
 
     args = parser.parse_args()
@@ -497,7 +503,14 @@ if __name__ == '__main__':
             datasets = json.load(f)['datasets']
             print('Loaded ' + filepath)
 
-        datasets = OrderedDict({s : datasets[s] for s in sorted(datasets.keys(), key=str.lower)})
+        dataset_ids = sorted(datasets.keys(), key=str.lower)
+        if args.start:
+            dataset_ids = dataset_ids[args.start:]
+        if args.number:
+            dataset_ids = dataset_ids[:args.number]
+
+        datasets = OrderedDict({s : datasets[s] for s in dataset_ids})
+        del dataset_ids
 
         do_cmds = not args.dry_run
 
@@ -600,7 +613,7 @@ if __name__ == '__main__':
             # If QC report output file was created, move it to a subdir
             qc_report_file = f'{dataset_id}.ccreport'
             if os.path.exists(qc_report_file):
-                shutil.move(qc_report_file, qc_reports_dir)
+                shutil.move(qc_report_file, os.path.join(qc_reports_dir, qc_report_file))
 
     if os.path.exists(logfile):
         print(f'\nWrote logfile: {logfile}')
