@@ -24,11 +24,18 @@ Additional specificity is possible with the `keep` and `exclude` filters.
 The `paths` list gives all the top-level paths in which to search for datasets.
 
 The wrapper uses three steps to publish, all done by calling `publish` from the working dir using different command-line arguments (`publish` is an alias for `publish.py`).
-The first is dataset discovery:
+Before running these commands, the correct environment with the ESGF publishing software needs to be activated, e.g.
+```bash
+source /home/scrd106/rja001/venv/pub_test/bin/activate
+```
+⚠️ **Create an "official" publishing env, since /home/scrd106/rja001/venv/pub_test was created for initial testing (although that doesn't really matter as long as it remains up to date with the ESGF software, esgvoc, and the compliance checker)**
+
+The first step is dataset discovery, which basically is an inventory of the datasets on the server that are available to publish:
 ```bash
 publish -d -c7
 ```
-which generates a file `datasets.json` specifying the datasets to publish.
+This generates a file `datasets.json` specifying the datasets to publish.
+By default the inventory will find all available datasets, but as noted above the `config-datasets.yaml` file can be edited to refine the search.
 The `-c7` option prevents already-published CMIP7 datasets from being included in `datasets.json`.
 
 ⚠️ **TODO: replace ad-hoc `-c7` option with a proper ESGF search using the search API or esgpull**
