@@ -7,14 +7,15 @@ https://esg-publisher.readthedocs.io/en/main/index.html
 
 '''
 import argparse
-import datetime
 import json
 import os
 import requests
+import shutil
 import subprocess
 import sys
 import yaml
 from collections import OrderedDict
+from datetime import datetime, UTC
 
 from tools import (find_datasets, get_unique_param_values, match_params,
                    publication_checks, data_request_checks, get_dreq_validation_file)
@@ -22,7 +23,7 @@ from esgfsearch import search, show_params, parse_file_size_str, file_size_str
 
 ##############################################################################
 
-datasets_file = 'datasets.json'
+DATE_FORMAT = '%d %b %Y, %H:%M:%S UTC'
 
 def check_env(config):
     '''check that correct env is active'''
@@ -45,7 +46,7 @@ def check_env(config):
     else:
         raise Exception('Need to specify env to run publishing commands')
 
-def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries: int = 0) -> int:
+def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries: int = 0) -> list[dict]:
     '''
     Execute list of commands.
     Checks return codes of commands and stops if a command fails.
@@ -77,7 +78,10 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries
     exit_status = None
     attempt = 1
     max_attempts = 1 + retries
+    results = []
     for cmd in cmds:
+        result = {'cmd': cmd}
+        results.append(result)
         if do_cmds:
             while attempt <= max_attempts:
                 if attempt > 1:
@@ -99,19 +103,35 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries
                 result.communicate()
                 exit_status = result.returncode
 
+                result.update({'exit_status': exit_status, 'attempt': attempt})
                 if exit_status == 0:
                     # Command has succeeded, so exit the retry loop
                     break
                 else:
                     # Command failed
                     attempt += 1
+
             if exit_status != 0:
                 # Command failed, so don't attempt any subsequent commands
                 break
         else:
             # Show command that would have been executed
             print(cmd)
-    return exit_status
+            result.update({'exit_status': 'N/A', 'attempt': 0})
+ 
+    return results
+
+def log_cmds(logfile: str, dataset_id: str, results: dict):
+    '''
+    Write success/fail status of commands.
+    '''
+    msg = [dataset_id]
+    for result in results:
+        msg += [result['cmd']]
+        msg += ['exit_status: {exit_status}, attempt: {attempt}'.format(**result)]
+    msg = '\n'.join(msg) + '\n'*2
+    with open(logfile, 'a') as f:
+        f.write(msg)
 
 def parse_args():
 
@@ -122,10 +142,11 @@ def parse_args():
     parser.add_argument('-c', '--config', type=str, default='config-datasets.yaml',
                         help='name of config file containing datasets to publish, default: %(default)s')
     # Define different publishing actions as input flags
+    default_datasets_file = 'datasets.json'
     actions = OrderedDict({
         'datasets': {
             'short': '-d',
-            'help': 'find datasets to publish and write info on them to ' + datasets_file
+            'help': f'find datasets to publish and write info on them to json file (default: {default_datasets_file})'
         },
         'mapfile': {
             'short': '-m',
@@ -152,7 +173,7 @@ def parse_args():
                         help='minimum size of dataset to retain, examples: "1 GB", 1GB, 1G')
     parser.add_argument('-nxr', '--no-xarray', action='store_true', default=False,
                         help='use --no-xarray argument to esgpublish (prevents failure on large datasets)')
-    parser.add_argument('-df', '--datasets-file', type=str, default=datasets_file,
+    parser.add_argument('-df', '--datasets-file', type=str, default=default_datasets_file,
                         help='name of datasets output json file')
     parser.add_argument('-nesgf', '--no-esgf-search', action='store_true', default=False,
                         help='turn off ESGF search that checks whether datasets are already published')
@@ -195,6 +216,16 @@ if __name__ == '__main__':
     args = parse_args()
     if args.datasets_file:
         datasets_file = args.datasets_file
+
+    log_dir = 'logs'
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    date_run =  datetime.now(UTC).strftime('%Y%m%d_%H%M%SUTC')
+    logfile = os.path.join(log_dir, f'log_cmds_{date_run}.log')
+
+    qc_reports_dir = 'ccreport'
+    if not os.path.exists(qc_reports_dir):
+        os.makedirs(qc_reports_dir)
 
     ##############################################################################
     # Load dataset configuration settings from config file
@@ -419,8 +450,6 @@ if __name__ == '__main__':
                 print('All of the datasets are already published')
             else:
                 print(f'Removed {n-len(datasets)} already-published datasets from publishing list (keeping {len(datasets)})')
- 
-
 
         datasets = OrderedDict({s : datasets[s] for s in sorted(datasets.keys(), key=str.lower)})
         param_unique_values = get_unique_param_values(datasets, dataset_parameters)
@@ -430,7 +459,7 @@ if __name__ == '__main__':
                 print(f'  {p} : ' + ', '.join(param_unique_values[p]))
         out = OrderedDict({
             'Header' : {
-                'date' : datetime.datetime.now().strftime('%d %b %Y'),
+                'date of search' : datetime.now(UTC).strftime(DATE_FORMAT),
                 'paths searched' : searched_base_paths,
                 'no. of datasets' : len(datasets),
                 'unique parameter values' : param_unique_values,
@@ -516,7 +545,10 @@ if __name__ == '__main__':
                     continue
 
             # Run commands to generate mapfile for this dataset
-            exit_status = exec_cmds(commands, cmd_args, do_cmds)
+            results = exec_cmds(commands, cmd_args, do_cmds)
+
+            # Write logfile summarizing the results of commands
+            log_cmds(logfile, dataset_id, results)
 
     ##############################################################################
     if args.publish:
@@ -560,12 +592,15 @@ if __name__ == '__main__':
                 continue
 
             # Run commands to publish this dataset
-            exit_status = exec_cmds(commands, cmd_args, do_cmds, retries=args.retries)
+            results = exec_cmds(commands, cmd_args, do_cmds, retries=args.retries)
 
-            # # If QC report output file was created, move it to a subdir
-            # qc_report_file = f'{dataset_id}.ccreport'
-            # if os.path.exists(qc_report_file):
+            # Write logfile summarizing the results of commands
+            log_cmds(logfile, dataset_id, results)
 
+            # If QC report output file was created, move it to a subdir
+            qc_report_file = f'{dataset_id}.ccreport'
+            if os.path.exists(qc_report_file):
+                shutil.move(qc_report_file, qc_reports_dir)
 
-
-
+    if os.path.exists(logfile):
+        print(f'\nWrote logfile: {logfile}')
