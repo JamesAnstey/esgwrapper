@@ -422,13 +422,13 @@ if __name__ == '__main__':
 
                 limit = str(limit)
                 url = f'https://discovery.east.esgf.io/collections/CMIP7/items?fields=id,properties.retracted&limit={limit}'
-                print(url)
+                print(f'Checking for already-published datasets by searching:\n  {url}')
                 response = requests.get(url).json()
 
                 outfile = 'published_datasets.json'
                 with open(outfile, 'w') as f:
                     json.dump(response, f, indent=2)
-                    print('wrote ' + outfile)
+                    print('Wrote ' + outfile)
 
                 # Get list of published dataset id's
                 exclude = []
@@ -437,7 +437,7 @@ if __name__ == '__main__':
                     retracted = bool(d['properties']['retracted'])
                     if not retracted:
                         exclude.append(dataset_id)
-                
+
                 datasets = {s: datasets[s] for s in datasets if s not in exclude}
 
             else:
