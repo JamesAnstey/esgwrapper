@@ -560,8 +560,9 @@ if __name__ == '__main__':
             # Run commands to generate mapfile for this dataset
             cmd_results = exec_cmds(commands, cmd_args, do_cmds)
 
-            # Write logfile summarizing the results of commands
-            log_cmds(logfile, dataset_id, cmd_results)
+            if do_cmds:
+                # Write logfile summarizing the results of commands
+                log_cmds(logfile, dataset_id, cmd_results)
 
     ##############################################################################
     if args.publish:
@@ -607,8 +608,9 @@ if __name__ == '__main__':
             # Run commands to publish this dataset
             cmd_results = exec_cmds(commands, cmd_args, do_cmds, retries=args.retries)
 
-            # Write logfile summarizing the results of commands
-            log_cmds(logfile, dataset_id, cmd_results)
+            if do_cmds:
+                # Write logfile summarizing the results of commands
+                log_cmds(logfile, dataset_id, cmd_results)
 
             # If QC report output file was created, move it to a subdir
             qc_report_file = f'{dataset_id}.ccreport'
