@@ -78,10 +78,10 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries
     exit_status = None
     attempt = 1
     max_attempts = 1 + retries
-    results = []
+    cmd_results = []
     for cmd in cmds:
-        result = {'cmd': cmd}
-        results.append(result)
+        cmd_result = {'cmd': cmd}
+        cmd_results.append(cmd_result)
         if do_cmds:
             while attempt <= max_attempts:
                 if attempt > 1:
@@ -103,7 +103,7 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries
                 result.communicate()
                 exit_status = result.returncode
 
-                result.update({'exit_status': exit_status, 'attempt': attempt})
+                cmd_result.update({'exit_status': exit_status, 'attempt': attempt})
                 if exit_status == 0:
                     # Command has succeeded, so exit the retry loop
                     break
@@ -117,18 +117,18 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries
         else:
             # Show command that would have been executed
             print(cmd)
-            result.update({'exit_status': 'N/A', 'attempt': 0})
+            cmd_result.update({'exit_status': 'N/A', 'attempt': 0})
  
-    return results
+    return cmd_results
 
-def log_cmds(logfile: str, dataset_id: str, results: dict):
+def log_cmds(logfile: str, dataset_id: str, cmd_results: dict):
     '''
     Write success/fail status of commands.
     '''
     msg = [dataset_id]
-    for result in results:
-        msg += [result['cmd']]
-        msg += ['exit_status: {exit_status}, attempt: {attempt}'.format(**result)]
+    for cmd_result in cmd_results:
+        msg += [cmd_result['cmd']]
+        msg += ['exit_status: {exit_status}, attempt: {attempt}'.format(**cmd_result)]
     msg = '\n'.join(msg) + '\n'*2
     with open(logfile, 'a') as f:
         f.write(msg)
@@ -545,10 +545,10 @@ if __name__ == '__main__':
                     continue
 
             # Run commands to generate mapfile for this dataset
-            results = exec_cmds(commands, cmd_args, do_cmds)
+            cmd_results = exec_cmds(commands, cmd_args, do_cmds)
 
             # Write logfile summarizing the results of commands
-            log_cmds(logfile, dataset_id, results)
+            log_cmds(logfile, dataset_id, cmd_results)
 
     ##############################################################################
     if args.publish:
@@ -592,10 +592,10 @@ if __name__ == '__main__':
                 continue
 
             # Run commands to publish this dataset
-            results = exec_cmds(commands, cmd_args, do_cmds, retries=args.retries)
+            cmd_results = exec_cmds(commands, cmd_args, do_cmds, retries=args.retries)
 
             # Write logfile summarizing the results of commands
-            log_cmds(logfile, dataset_id, results)
+            log_cmds(logfile, dataset_id, cmd_results)
 
             # If QC report output file was created, move it to a subdir
             qc_report_file = f'{dataset_id}.ccreport'
