@@ -187,6 +187,8 @@ def parse_args():
                         help='index to begin with in list of datasets (0 = first dataset)')
     parser.add_argument('-n', '--number', type=int,
                         help='number of datasets to use from list of datasets (default: all)')
+    parser.add_argument('-id', '--dataset-ids', type=str,
+                        help='dataset ids to use: comma-separated list, or file listing datasets')
 
     parser.add_argument('-c7', '--cmip7-dev', action='store_true', default=False,
                         help='TEMPORARY option for use with -d for CMIP7 ESGF-NG publishing')
@@ -504,6 +506,18 @@ if __name__ == '__main__':
             print('Loaded ' + filepath)
 
         dataset_ids = sorted(datasets.keys(), key=str.lower)
+
+        if args.dataset_ids:
+            if os.path.exists(args.dataset_ids):
+                with open(args.dataset_ids) as f:
+                    dataset_ids = f.readlines()
+            else:
+                dataset_ids = args.dataset_ids.split(',')
+            dataset_ids = [s.strip() for s in dataset_ids]
+
+        print(dataset_ids)
+        sys.exit()
+
         if args.start:
             dataset_ids = dataset_ids[args.start:]
         if args.number:
