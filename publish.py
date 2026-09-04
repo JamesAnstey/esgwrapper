@@ -195,9 +195,6 @@ def parse_args():
     parser.add_argument('-api', '--api-method', type=int, default=2,
                         help='TEMPORARY specify how to use restful api to find out what datasets are already published')
 
-
-    
-
     args = parser.parse_args()
 
     if not any([args.__dict__[action] for action in actions]):
@@ -514,9 +511,6 @@ if __name__ == '__main__':
             else:
                 dataset_ids = args.dataset_ids.split(',')
             dataset_ids = [s.strip() for s in dataset_ids]
-
-        print(dataset_ids)
-        sys.exit()
 
         if args.start:
             dataset_ids = dataset_ids[args.start:]
