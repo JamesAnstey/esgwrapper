@@ -23,6 +23,10 @@ search_esgf:
   verbose: False
   show_browser_url: False
 
+# TODO: incorporate ESGF-NG search parameters into this config file
+# search_esgf_ng:
+#   index_node: east
+
 DRS:
   cmip7:
     # for guidance see https://wcrp-cmip.github.io/cmip7-guidance/docs/CMIP7/Global_Attributes/

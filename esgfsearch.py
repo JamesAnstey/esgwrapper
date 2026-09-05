@@ -508,3 +508,22 @@ def parse_file_size_str(size_str):
         size = int( float(size)*mult )
         break
     return size
+
+
+# TODO: proper ESGF-NG search function with similar inputs/outputs as search()
+def search_ng(params,
+           dataset_parameters,
+           project,
+           index_node, 
+        #    include_replicas=False,
+        #    verbose=False,
+        #    show_browser_url=False,
+           keep_params='all',
+           ):
+    '''
+    As search(), but for ESGF-NG.
+
+    As of Sep 2026, I'm not clear on the best way to interact with the NG search.
+    So this function is kind of exploratory, for now.
+    It might be possible to make search() work with NG, or maybe this will replace it.
+    '''

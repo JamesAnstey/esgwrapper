@@ -14,8 +14,10 @@ import shutil
 import subprocess
 import sys
 import yaml
+
 from collections import OrderedDict
 from datetime import datetime, UTC
+from pystac_client import Client
 
 from tools import (find_datasets, get_unique_param_values, match_params,
                    publication_checks, data_request_checks, get_dreq_validation_file)
@@ -192,7 +194,7 @@ def parse_args():
 
     parser.add_argument('-c7', '--cmip7-dev', action='store_true', default=False,
                         help='TEMPORARY option for use with -d for CMIP7 ESGF-NG publishing')
-    parser.add_argument('-api', '--api-method', type=int, default=2,
+    parser.add_argument('-api', '--api-method', type=int, default=3,
                         help='TEMPORARY specify how to use restful api to find out what datasets are already published')
 
     args = parser.parse_args()
@@ -252,7 +254,7 @@ if __name__ == '__main__':
         search_esgf = not args.no_esgf_search
         check_data_request = not args.no_data_request
         do_validation = not args.no_validation
-        use_esgf_ng_api = False
+        search_esgf_ng = False
         if args.inventory:
             search_esgf = False
             check_data_request = False
@@ -263,7 +265,7 @@ if __name__ == '__main__':
             check_data_request = False
             do_validation = False
 
-            use_esgf_ng_api = True
+            search_esgf_ng = True
 
         get_size = True
         if args.max_size:
@@ -389,9 +391,21 @@ if __name__ == '__main__':
             else:
                 print(f'Removed {n-len(datasets)} already-published datasets from publishing list (keeping {len(datasets)})')
 
+        if search_esgf_ng:
+            # # Check which datasets are already published by searching ESGF-NG.
+            # # TODO: figure out whether or not this should replace the above search_esgf call.
+
+            # index_node = config_pub['search_esgf_ng']['index_node']
+            # print(f'Checking for already published datasets by searching {index_node}')
+
+            # published_datasets = search_ng(param_unique_values, dataset_parameters, project, index_node,
+            #                             # verbose=config_pub['search_esgf']['verbose'],
+            #                             # show_browser_url=config_pub['search_esgf']['show_browser_url'],
+            #                             # keep_params=None,
+            #                             )
 
 
-        if use_esgf_ng_api:
+
             # Temporary option (Aug 2026) while figuring out best way to query ESGF-NG via api.
             #
             # The assumption here is that if a dataset is already published, a URL will exist of the form:
@@ -402,14 +416,14 @@ if __name__ == '__main__':
             # Use this to determine what's already published.
             if search_esgf:
                 raise Exception('this is a stopgap for proper ESGF search')
-            where = 'east' # must correspond to one that is published to
-            # where = 'west'
+            index_node = 'east'
+            # index_node = 'west'
 
             keep = []
 
             if args.api_method == 1:
                 for dataset_id in datasets:
-                    url = f'https://discovery.{where}.esgf.io/collections/CMIP7/items/{dataset_id}'
+                    url = f'https://discovery.{index_node}.esgf.io/collections/CMIP7/items/{dataset_id}'
                     response = requests.get(url).json()
                     # print(url)
                     if 'code' in response:
@@ -421,6 +435,7 @@ if __name__ == '__main__':
                             #{"code":"NotFoundError","description":"Item MIP-DRS7.CMIP7.CMIP.CCCma.CanESM5-1.piControl.r1i1p2f1.glb.mon.boovas.tavg-h10m-hxy-u.g120.v20190429 does not exist inside Collection CMIP7"}'
 
                 datasets = {s: datasets[s] for s in keep}
+                del keep
 
             elif args.api_method == 2:
                 limit = 10000000000 # set large enough to get all datasets on ESGF
@@ -444,6 +459,33 @@ if __name__ == '__main__':
                         exclude.append(dataset_id)
 
                 datasets = {s: datasets[s] for s in datasets if s not in exclude}
+                del exclude
+
+            elif args.api_method == 3:
+                # Use STAC API
+                url_endpoint = f"https://discovery.{index_node}.esgf.io"
+                client = Client.open(url_endpoint)
+                print(f'Searching ESGF-NG using STAC API for endpoint: {url_endpoint}')
+                exclude = set()
+                for source_id in param_unique_values['source_id']:
+                    # for experiment_id in param_unique_values['experiment_id']:
+                    for experiment_id in ['esm-hist', 'piControl']:
+                        query = {
+                            'collections': [project.upper()],
+                            'query': {
+                                f'{project}:source_id': {"eq": source_id},
+                                f'{project}:experiment_id': {"eq": experiment_id},
+                            }
+                        }
+                        search = client.search(**query)
+                        items = search.item_collection()
+                        dataset_ids = [item.id for item in items]
+                        print(f'  Found {len(dataset_ids)} published datasets for source_id={source_id} and experiment_id={experiment_id}')
+                        exclude.update(dataset_ids)
+                        del dataset_ids
+                print(f'  TOTAL no. of published datasets: {len(exclude)}')
+                datasets = {s: datasets[s] for s in datasets if s not in exclude}
+                del exclude
 
             else:
                 raise ValueError(f'Which ad-hoc API method should be used?')
