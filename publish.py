@@ -130,7 +130,10 @@ def log_cmds(logfile: str, dataset_id: str, cmd_results: dict):
     msg = [dataset_id]
     for cmd_result in cmd_results:
         msg += [cmd_result['cmd']]
-        msg += ['exit_status: {exit_status}, attempt: {attempt}'.format(**cmd_result)]
+        if cmd_result['exit_status'] == 0:
+            msg += ['SUCCESS - exit_status: {exit_status}, attempt: {attempt}'.format(**cmd_result)]
+        else:
+            msg += ['FAIL - exit_status: {exit_status}, attempt: {attempt}'.format(**cmd_result)]
     msg = '\n'.join(msg) + '\n'*2
     with open(logfile, 'a') as f:
         f.write(msg)
