@@ -13,6 +13,7 @@ import requests
 import shutil
 import subprocess
 import sys
+import time
 import yaml
 
 from collections import OrderedDict
@@ -80,6 +81,7 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries
     exit_status = None
     attempt = 1
     max_attempts = 1 + retries
+    start_time = time.time()
     cmd_results = []
     for cmd in cmds:
         cmd_result = {'cmd': cmd}
@@ -120,7 +122,9 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries
             # Show command that would have been executed
             print(cmd)
             cmd_result.update({'exit_status': 'N/A', 'attempt': 0})
- 
+        # Record time taken to complete the command (units: seconds)
+        cmd_result['time'] = time.time() - start_time
+
     return cmd_results
 
 def log_cmds(logfile: str, dataset_id: str, cmd_results: dict):
@@ -130,10 +134,12 @@ def log_cmds(logfile: str, dataset_id: str, cmd_results: dict):
     msg = [dataset_id]
     for cmd_result in cmd_results:
         msg += [cmd_result['cmd']]
+        cmd_result['time'] = str('%.4f' % cmd_result['time'])
+        details = 'exit_status: {exit_status}, attempts: {attempt}, time: {time} s'.format(**cmd_result)
         if cmd_result['exit_status'] == 0:
-            msg += ['SUCCESS - exit_status: {exit_status}, attempt: {attempt}'.format(**cmd_result)]
+            msg += [f'SUCCESS - {details}']
         else:
-            msg += ['FAIL - exit_status: {exit_status}, attempt: {attempt}'.format(**cmd_result)]
+            msg += [f'FAIL - {details}']
     msg = '\n'.join(msg) + '\n'*2
     with open(logfile, 'a') as f:
         f.write(msg)
