@@ -468,8 +468,7 @@ if __name__ == '__main__':
                 print(f'Searching ESGF-NG using STAC API for endpoint: {url_endpoint}')
                 exclude = set()
                 for source_id in param_unique_values['source_id']:
-                    # for experiment_id in param_unique_values['experiment_id']:
-                    for experiment_id in ['esm-hist', 'piControl']:
+                    for experiment_id in param_unique_values['experiment_id']:
                         query = {
                             'collections': [project.upper()],
                             'query': {
