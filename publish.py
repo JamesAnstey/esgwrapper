@@ -485,6 +485,13 @@ if __name__ == '__main__':
                         del dataset_ids
                 print(f'  TOTAL no. of published datasets: {len(exclude)}')
                 datasets = {s: datasets[s] for s in datasets if s not in exclude}
+
+                exclude = sorted(exclude, key=str.lower)
+                outfile = 'published_datasets.txt'
+                w = '\n'.join(exclude) + '\n'
+                with open(outfile, 'w') as f:
+                    f.write(w)
+                    print(f'Wrote {outfile} listing {len(exclude)} published datasets')
                 del exclude
 
             else:
