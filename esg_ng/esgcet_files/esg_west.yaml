@@ -40,7 +40,7 @@ user_project_config:
 
 verbose: false
 non_netcdf: false
-disable_citation: true
+disable_citation: false
 disable_further_info: true
 
 # For NG-West Production environment.
