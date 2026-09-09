@@ -34,12 +34,16 @@ source /home/scrd106/rja001/venv/pub_test/bin/activate
 
 If a new venv needs to be created:
 ```bash
-python3.12 -m venv path/to/env_name # dir storing the venv, replace env_name with preferred name
+python3.12 -m venv env_name # replace env_name with preferred name
 source env_name/bin/activate
-cd path/to/esgwrapper # dir esgwrapper was cloned
+pip install --upgrade pip
+cd path/to/esgwrapper # dir into which esgwrapper was cloned
 pip install -r requirements.txt
 esgvoc use universe@latest cmip7@latest cordex-cmip6@latest cmip6plus@latest # include all projects to be published to
 ```
+(As of Sep 2026 python3.12 seems to be the latest version on the server, and also is the [minimum python version required by esgvoc](https://esgf.github.io/esgf-vocab/user/introduction.html#requirements).)
+
+⚠️ As of 3 Sep 2026, the latest version of `universe` should **not** be used because of a bug in the QC checker. Instead use `universe@1.0.32` until the QC checker is updated.
 
 The first step is dataset discovery, which basically is an inventory of the datasets on the server that are available to publish:
 ```bash
