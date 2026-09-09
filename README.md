@@ -2,10 +2,12 @@
 
 Wrapper for [ESGF publishing software](https://esg-publisher.readthedocs.io/en/main/) that finds publishable datasets and loops over publishing commands.
 
+General documentation on how to publish to ESGF at CCCma can be [found here](https://gitlab.science.gc.ca/CCCma/cccma_data_publishing/-/blob/master/docs/README_ESGF_publishing.md).
+
 
 ### Workflow
 
-On server where publishing commands will be run:
+On server where publishing commands will be run (e.g., using the `scrd106` account):
 ```bash
 cd /datalocal/home/scrd106/esgf_publishing/cmip7
 git clone git@github.com:JamesAnstey/esgwrapper.git  # skip if it's already there
@@ -29,6 +31,15 @@ Before running these commands, the correct environment with the ESGF publishing 
 source /home/scrd106/rja001/venv/pub_test/bin/activate
 ```
 ⚠️ **Create an "official" publishing env, since /home/scrd106/rja001/venv/pub_test was created for initial testing (although that doesn't really matter as long as it remains up to date with the ESGF software, esgvoc, and the compliance checker)**
+
+If a new venv needs to be created:
+```bash
+python3.12 -m venv path/to/env_name # dir storing the venv, replace env_name with preferred name
+source env_name/bin/activate
+cd path/to/esgwrapper # dir esgwrapper was cloned
+pip install -r requirements.txt
+esgvoc use universe@latest cmip7@latest cordex-cmip6@latest cmip6plus@latest # include all projects to be published to
+```
 
 The first step is dataset discovery, which basically is an inventory of the datasets on the server that are available to publish:
 ```bash

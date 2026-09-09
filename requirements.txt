@@ -1,1 +1,5 @@
+esgcet 
+esgprep
+cc-plugin-wcrp
+esgvoc
 pystac-client
