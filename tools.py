@@ -50,7 +50,10 @@ def _validate_dataset_file(filename: str, params: dict, file_template: str) -> b
     # Check filename follows the DRS
     if file_template_noext.endswith('_{timeRangeDD}'):
         file_template_notime = file_template_noext.rpartition('_')[0]
-        filename_notime = filename_noext.rpartition('_')[0]
+        if params['frequency'] == 'fx':
+            filename_notime = filename_noext
+        else:
+            filename_notime = filename_noext.rpartition('_')[0]
     else:
         raise ValueError(f'Where is time string in the file template? Received: {file_template}')
     check.append(filename_notime == file_template_notime.format(**params))
