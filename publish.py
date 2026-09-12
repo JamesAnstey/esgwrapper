@@ -298,7 +298,8 @@ if __name__ == '__main__':
             else:
                 print('Path not found: ' + base_path)
             for dataset_path in dataset_paths:
-                d = find_datasets(base_path, dataset_path,
+                d = find_datasets(project,
+                                  base_path, dataset_path,
                                   dataset_template, path_template, file_template,
                                   get_size=get_size)
                 datasets.update(d)

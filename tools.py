@@ -1,11 +1,18 @@
 #!/usr/bin/env python
 
 import json
+import logging
+import numpy as np
 import os
 from collections import OrderedDict, defaultdict
+from datetime import datetime
+
+import esgvoc.api as ev
 
 from esgfsearch import file_size_str
 
+logger = logging.getLogger('esgwrapper')
+logging.basicConfig(filename='esgwrapper.log', filemode='w', level=logging.INFO)
 
 def match_params(params, reference):
     # Loop over parameters (p) in the reference, checking for matches in each of them
@@ -31,7 +38,7 @@ def match_params(params, reference):
 
     return matches
 
-def _validate_dataset_file(filename: str, params: dict, file_template: str) -> bool:
+def _validate_dataset_filename(project: str, filename: str, params: dict, file_template: str) -> bool:
     '''
     Check that filename is valid for a dataset.
     '''
@@ -48,25 +55,129 @@ def _validate_dataset_file(filename: str, params: dict, file_template: str) -> b
     check.append(not filename.startswith('.'))
 
     # Check filename follows the DRS
-    if file_template_noext.endswith('_{timeRangeDD}'):
+    if project == 'cmip7':
+        assert file_template_noext.endswith('_{timeRangeDD}'), \
+            f'Unexpected file_template for {project}: {file_template}'
         file_template_notime = file_template_noext.rpartition('_')[0]
         if params['frequency'] == 'fx':
             filename_notime = filename_noext
         else:
             filename_notime = filename_noext.rpartition('_')[0]
     else:
-        raise ValueError(f'Where is time string in the file template? Received: {file_template}')
+        raise ValueError(f'Where in the filename is the time string for {project}? Received: {file_template}')
     check.append(filename_notime == file_template_notime.format(**params))
 
     return all(check)
 
-def find_datasets(base_path: str,
+TIME_STR_FORMAT_BY_LENGTH = {
+    6: '%Y%m' # example: '185001'
+}
+def _parse_time_str(s: str) -> datetime:
+    n = len(s)
+    if n not in TIME_STR_FORMAT_BY_LENGTH:
+        raise ValueError(f'Unexpected time string {s} of length={n}, how should it be parsed?')
+    return datetime.strptime(s, TIME_STR_FORMAT_BY_LENGTH[n])
+
+def _validate_year_ranges(year_ranges: np.array) -> bool:
+    '''
+    Check that dataset years are contiguous, based on the start/stop times.
+
+    year_ranges is an array like the time_bnds in a netcdf file, example:
+        array([[6500., 6600.],
+               [6601., 6700.],
+               [6701., 6800.]])
+    '''
+    # Check sorting that consecuritve file start & stop times are at least 1 year apart
+    assert np.all(np.diff(year_ranges, axis=0)) > 0, \
+        f'Unexpected order of start/stop file times: {year_ranges}'
+    # Check that within each file the start time is the same year or later than the stop time
+    assert np.all(np.diff(year_ranges, axis=1)) >= 0, \
+        f'Unexpected time range within files: {year_ranges}'
+    # Check that each stop time is a year before the next start time
+    year_gaps = year_ranges[1:,0] - year_ranges[:-1,1]
+    return bool(np.all(year_gaps == 1))
+
+def _get_file_times(project: str, dataset_files: list[str]) -> np.array:
+    year_ranges = np.zeros((len(dataset_files),2))
+    year_ranges.fill(np.nan)
+    if project == 'cmip7':
+        # dataset_files is assumed to be sorted from earliest to latest times
+        for k,filename in enumerate(dataset_files):
+            filename, ext = os.path.splitext(filename)
+            time_range_str = filename.split('_')[-1]
+            assert time_range_str.count('-') == 1, f'Unexpected time range in filename: {time_range_str}'
+            time_str_start, time_str_stop = time_range_str.split('-')
+            time_start = _parse_time_str(time_str_start)
+            time_stop = _parse_time_str(time_str_stop)
+            year_ranges[k,0] = time_start.year
+            year_ranges[k,1] = time_stop.year
+    else:
+        raise ValueError(f'How to get file times for {project}?')
+    assert not np.any(year_ranges == np.nan), f'Failed to find some file time ranges: {year_ranges}'
+    return year_ranges
+
+def _check_dataset_years(project: str, dataset_files: list[str], params: dict) -> dict:
+    '''
+    Validate the years indicated by a dataset's filenames span the expected range of
+    years, or minimum number of years, for the experiment.
+
+    Only years are checked. Any months, days, etc in the filename's time string are ignored.
+    Only the filename is used. The file contents are not accessed to verify that the time string
+    accurately represents the times in the file (CMOR and the QC checker should handle that).
+    '''
+    check = {}
+    if project == 'cmip7':
+        if params['frequency'] == 'fx':
+            # For fixed fields (with no time dimension), this check is irrelevant
+            return True
+        else:
+            year_ranges = _get_file_times(project, dataset_files)
+            if not _validate_year_ranges(year_ranges):
+                # Failure here indicates the dataset years are not contiguous, i.e. there are time gaps.
+                logger.info(f'  REJECTED: dataset has year gaps')
+                return False
+
+            # Get info from CVs about time range of the experiment
+            expt = params['experiment_id']
+            cv_info = ev.get_term_in_collection(project_id=project, collection_id='experiment', term_id=expt.lower())
+            assert expt == cv_info.drs_name, f'Unexpected DRS name for experiment {expt}: {cv_info.drs_name}'
+
+            fmt = '%Y-%m-%d' # example: "1850-01-01"
+            dataset_start_year = year_ranges[0,0]
+            dataset_end_year = year_ranges[-1,-1]
+            dataset_total_years = dataset_end_year - dataset_start_year + 1
+            check = []
+            if cv_info.start_timestamp:
+                dt_start = datetime.strptime(cv_info.start_timestamp, fmt)
+                check.append(dataset_start_year == dt_start.year)
+                if not check[-1]:
+                    logger.info(f'  REJECTED: dataset starts in year {dataset_start_year}, '
+                                f'but should start in year={cv_info.dt_start.year}')
+            if cv_info.end_timestamp:
+                dt_end = datetime.strptime(cv_info.end_timestamp, fmt)
+                check.append(dataset_end_year == dt_end.year)
+                if not check[-1]:
+                    logger.info(f'  REJECTED: dataset ends in year {dataset_end_year}, '
+                                f'but should end in year={cv_info.dt_end.year}')
+            if cv_info.min_number_yrs_per_sim:
+                check.append(dataset_total_years >= cv_info.min_number_yrs_per_sim)
+                if not check[-1]:
+                    logger.info(f'  REJECTED: dataset has {dataset_total_years} years, '
+                                f'minimum number of years={cv_info.min_number_yrs_per_sim}')
+            if len(check) == 0:
+                raise ValueError(f'No dataset time range checks were applied, is the needed info in the CVs?')
+            return all(check)
+    else:
+        raise ValueError(f'How to check experiment years for {project}?')
+
+def find_datasets(project: str,
+                  base_path: str,
                   dataset_path: str,
                   dataset_template: str,
                   path_template: str,
                   file_template: str,
                   get_size: bool=False,
-                  require_all_valid_files: bool=True
+                  require_all_valid_files: bool=True,
                   ) -> dict:
     '''
     Walk directory to find datasets and gather info about them.
@@ -86,21 +197,30 @@ def find_datasets(base_path: str,
         params = {p:v for p,v in zip(path_params, param_values_from_path)}
         if len(param_values_from_path) == path_depth:
             dataset_id = dataset_template.format(**params)
+            logger.info(f'Found dataset: {dataset_id}')
+            logger.info(f'  path: {dirpath}')
             dataset_files = set()
             invalid_files = set()
             for filename in filenames:
-                if _validate_dataset_file(filename, params, file_template):
+                if _validate_dataset_filename(project, filename, params, file_template):
                     dataset_files.add(filename)
                 else:
                     invalid_files.add(filename)
-            if len(invalid_files) > 0 and require_all_valid_files:
-                # If any invalid files were found in the dataset dir, reject it
-                continue
+
+            dataset_files = sorted(dataset_files, key=str.lower)
+            if require_all_valid_files:
+                if len(invalid_files) > 0:
+                    # If any invalid files were found in the dataset dir, reject it
+                    logger.info(f'  REJECTED: invalid files were found in dataset dir')
+                    continue
+                if not _check_dataset_years(project, dataset_files, params):
+                    # If dataset does not contain all expected years, reject it
+                    logger.info(f'  REJECTED: failed time range checks (see above for why)')
+                    continue
 
             datasets[dataset_id] = {
                 'path' : dirpath, 'params' : params
             }
-            dataset_files = sorted(dataset_files, key=str.lower)
             datasets[dataset_id].update({
                 'no. of files' : len(dataset_files), 'filenames' : dataset_files,
             })
