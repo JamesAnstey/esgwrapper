@@ -31,8 +31,43 @@ def match_params(params, reference):
 
     return matches
 
+def _validate_dataset_file(filename: str, params: dict, file_template: str) -> bool:
+    '''
+    Check that filename is valid for a dataset.
+    '''
+    check = []
 
-def find_datasets(base_path, dataset_path, dataset_template, path_template, get_size=False):
+    file_template_noext, valid_ext = os.path.splitext(file_template)
+    filename_noext, ext = os.path.splitext(filename)
+
+    # Check filename extension
+    check.append(ext == valid_ext)
+
+    # Check filename doesn't start with '.', which could indicate a file being rsync'd
+    # (i.e., the rsync is still in progress)
+    check.append(not filename.startswith('.'))
+
+    # Check filename follows the DRS
+    if file_template_noext.endswith('_{timeRangeDD}'):
+        file_template_notime = file_template_noext.rpartition('_')[0]
+        filename_notime = filename_noext.rpartition('_')[0]
+    else:
+        raise ValueError(f'Where is time string in the file template? Received: {file_template}')
+    check.append(filename_notime == file_template_notime.format(**params))
+
+    return all(check)
+
+def find_datasets(base_path: str,
+                  dataset_path: str,
+                  dataset_template: str,
+                  path_template: str,
+                  file_template: str,
+                  get_size: bool=False,
+                  require_all_valid_files: bool=True
+                  ) -> dict:
+    '''
+    Walk directory to find datasets and gather info about them.
+    '''
 
     path_sep = os.path.sep
     path_params = [s.strip('{').strip('}') for s in path_template.split(path_sep)]
@@ -41,8 +76,6 @@ def find_datasets(base_path, dataset_path, dataset_template, path_template, get_
 
     datasets = {}
 
-    valid_ext = ['.nc']
-
     path = os.path.join(base_path, dataset_path)
     for (dirpath, dirnames, filenames) in os.walk(path, followlinks=False):
         relpath = os.path.relpath(dirpath, base_path)
@@ -50,13 +83,20 @@ def find_datasets(base_path, dataset_path, dataset_template, path_template, get_
         params = {p:v for p,v in zip(path_params, param_values_from_path)}
         if len(param_values_from_path) == path_depth:
             dataset_id = dataset_template.format(**params)
+            dataset_files = set()
+            invalid_files = set()
+            for filename in filenames:
+                if _validate_dataset_file(filename, params, file_template):
+                    dataset_files.add(filename)
+                else:
+                    invalid_files.add(filename)
+            if len(invalid_files) > 0 and require_all_valid_files:
+                # If any invalid files were found in the dataset dir, reject it
+                continue
+
             datasets[dataset_id] = {
                 'path' : dirpath, 'params' : params
             }
-            dataset_files = set()
-            for filename in filenames:
-                if os.path.splitext(filename)[-1] in valid_ext:
-                    dataset_files.add(filename)
             dataset_files = sorted(dataset_files, key=str.lower)
             datasets[dataset_id].update({
                 'no. of files' : len(dataset_files), 'filenames' : dataset_files,
@@ -69,6 +109,9 @@ def find_datasets(base_path, dataset_path, dataset_template, path_template, get_
                     # 'size' : size, 'size_str' : file_size_str(size)
                     'size (bytes)' : size, 'size (human readable)' : file_size_str(size)
                 })
+
+    if len(invalid_files) > 0 and require_all_valid_files:
+        print(f'\n * WARNING * rejected {len(invalid_files)} datasets in {path}\n')
 
     return datasets
 

@@ -287,7 +287,7 @@ if __name__ == '__main__':
 
         dataset_template = config_pub['DRS'][project]['dataset']
         path_template = config_pub['DRS'][project]['path']
-        # file_template = config_pub['DRS'][project]['file']  # not currently needed (but might be for some projects?)
+        file_template = config_pub['DRS'][project]['file']  # not currently needed (but might be for some projects?)
 
         datasets = {}
         searched_base_paths = []
@@ -298,7 +298,9 @@ if __name__ == '__main__':
             else:
                 print('Path not found: ' + base_path)
             for dataset_path in dataset_paths:
-                d = find_datasets(base_path, dataset_path, dataset_template, path_template, get_size=get_size)
+                d = find_datasets(base_path, dataset_path,
+                                  dataset_template, path_template, file_template,
+                                  get_size=get_size)
                 datasets.update(d)
                 del d
 
