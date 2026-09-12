@@ -143,23 +143,22 @@ def _check_dataset_years(project: str, dataset_files: list[str], params: dict) -
             cv_info = ev.get_term_in_collection(project_id=project, collection_id='experiment', term_id=expt.lower())
             assert expt == cv_info.drs_name, f'Unexpected DRS name for experiment {expt}: {cv_info.drs_name}'
 
-            fmt = '%Y-%m-%d' # example: "1850-01-01"
             dataset_start_year = year_ranges[0,0]
             dataset_end_year = year_ranges[-1,-1]
             dataset_total_years = dataset_end_year - dataset_start_year + 1
             check = []
             if cv_info.start_timestamp:
-                dt_start = datetime.strptime(cv_info.start_timestamp, fmt)
+                dt_start = cv_info.start_timestamp
                 check.append(dataset_start_year == dt_start.year)
                 if not check[-1]:
                     logger.info(f'  REJECTED: dataset starts in year {dataset_start_year}, '
-                                f'but should start in year={cv_info.dt_start.year}')
+                                f'but should start in year={dt_start.year}')
             if cv_info.end_timestamp:
-                dt_end = datetime.strptime(cv_info.end_timestamp, fmt)
+                dt_end = cv_info.end_timestamp
                 check.append(dataset_end_year == dt_end.year)
                 if not check[-1]:
                     logger.info(f'  REJECTED: dataset ends in year {dataset_end_year}, '
-                                f'but should end in year={cv_info.dt_end.year}')
+                                f'but should end in year={dt_end.year}')
             if cv_info.min_number_yrs_per_sim:
                 check.append(dataset_total_years >= cv_info.min_number_yrs_per_sim)
                 if not check[-1]:
@@ -233,9 +232,6 @@ def find_datasets(project: str,
                     # 'size' : size, 'size_str' : file_size_str(size)
                     'size (bytes)' : size, 'size (human readable)' : file_size_str(size)
                 })
-
-    if len(invalid_files) > 0 and require_all_valid_files:
-        print(f'\n * WARNING * rejected {len(invalid_files)} datasets in {path}\n')
 
     return datasets
 
