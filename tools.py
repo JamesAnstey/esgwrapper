@@ -213,7 +213,7 @@ def find_datasets(project: str,
                 logger.info(f'  REJECTED: invalid files were found in dataset dir')
                 continue
             if len(dataset_files) == 0:
-                logger.info(f'  No valid dataset files were found')
+                logger.info(f'  REJECTED: No valid dataset files were found')
                 continue
             if not _check_dataset_years(project, dataset_files, params):
                 # If dataset does not contain all expected years, reject it
