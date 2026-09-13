@@ -178,7 +178,6 @@ def find_datasets(project: str,
                   path_template: str,
                   file_template: str,
                   get_size: bool=False,
-                  require_all_valid_files: bool=True,
                   ) -> dict:
     '''
     Walk directory to find datasets and gather info about them.
@@ -209,15 +208,17 @@ def find_datasets(project: str,
                     invalid_files.add(filename)
 
             dataset_files = sorted(dataset_files, key=str.lower)
-            if require_all_valid_files:
-                if len(invalid_files) > 0:
-                    # If any invalid files were found in the dataset dir, reject it
-                    logger.info(f'  REJECTED: invalid files were found in dataset dir')
-                    continue
-                if not _check_dataset_years(project, dataset_files, params):
-                    # If dataset does not contain all expected years, reject it
-                    logger.info(f'  REJECTED: failed time range checks (see above for why)')
-                    continue
+            if len(invalid_files) > 0:
+                # If any invalid files were found in the dataset dir, reject it
+                logger.info(f'  REJECTED: invalid files were found in dataset dir')
+                continue
+            if len(dataset_files) == 0:
+                logger.info(f'  No valid dataset files were found')
+                continue
+            if not _check_dataset_years(project, dataset_files, params):
+                # If dataset does not contain all expected years, reject it
+                logger.info(f'  REJECTED: failed time range checks (see above for why)')
+                continue
 
             datasets[dataset_id] = {
                 'path' : dirpath, 'params' : params
