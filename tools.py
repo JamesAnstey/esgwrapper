@@ -72,6 +72,7 @@ def _validate_dataset_filename(project: str, filename: str, params: dict, file_t
 TIME_STR_FORMAT_BY_LENGTH = {
     6: '%Y%m', # example: '185001'
     8: '%Y%m%d', # example: '18500101'
+    12: '%Y%m%d%H%M', # example: '202201010300'
 }
 def _parse_time_str(s: str) -> datetime:
     n = len(s)
