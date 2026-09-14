@@ -1,6 +1,8 @@
 
 mapfile:
-  venv: /home/scrd106/rja001/venv/pub_test
+  venv:
+    - /home/scrd106/rja001/venv/pub_test
+    - /home/scrd106/rja001/venv/esgpub
   commands: [
     'esgmapfile make --project {project} --outdir {mapfile_path} --directory {dataset_path}'
   ]
@@ -11,7 +13,9 @@ mapfile:
   clobber: False
 
 publish:
-  venv: /home/scrd106/rja001/venv/pub_test
+  venv:
+    - /home/scrd106/rja001/venv/pub_test
+    - /home/scrd106/rja001/venv/esgpub
   commands: [
     # 'esgpublish --map mapfile_list --config esg_east.yaml',
     # 'esgpublish --map {mapfile} --config $REPO_PATH/esg_ng/esgcet_files/esg_east.yaml'

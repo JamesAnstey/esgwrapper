@@ -29,23 +29,39 @@ from esgfsearch import search, show_params, parse_file_size_str, file_size_str
 DATE_FORMAT = '%d %b %Y, %H:%M:%S UTC'
 
 def check_env(config):
-    '''check that correct env is active'''
+    '''
+    Check that correct environment is active.
+    List of valid environments is given in config-publisher.yaml.
+    '''
+    if ('venv' in config) and ('conda env' in config):
+        raise ValueError('config-publisher.yaml should specify either venv or conda env, not both')
     if 'venv' in config:
-        env = config['venv']
-        env_realpath = os.path.realpath(env)
-        if do_cmds:
-            if 'VIRTUAL_ENV' not in os.environ:
-                raise ValueError('No venv is activated')
-            if os.environ['VIRTUAL_ENV'] != env_realpath:
-                cmd = 'source ' + os.path.join(env, 'bin/activate')
-                raise OSError(f'To run commands, first do:\n  {cmd}')
+        valid_envs = config['venv']
+        valid_envs_realpath = [os.path.realpath(env) for env in valid_envs]
+        if 'VIRTUAL_ENV' not in os.environ:
+            raise ValueError('No venv is activated')
+        if os.environ['VIRTUAL_ENV'] not in valid_envs_realpath:
+            msg = ['To run commands, activate one of the valid environments (set in config-publisher.yaml):']
+            for env in valid_envs:
+                msg.append(f'  {env}')
+            msg.append('Example: ')
+            cmd = 'source ' + os.path.join(env, 'bin/activate')
+            msg.append(f'  {cmd}')
+            raise OSError('\n'.join(msg))
+
     elif 'conda env' in config:
-        env = config['conda env']
-        if do_cmds:
-            if 'CONDA_DEFAULT_ENV' not in os.environ:
-                raise ValueError('No conda env is activated')
-            if os.environ['CONDA_DEFAULT_ENV'] != env:
-                raise OSError('To run commands, first do:\n  conda activate ' + env)
+        valid_envs = config['conda env']
+        if 'CONDA_DEFAULT_ENV' not in os.environ:
+            raise ValueError('No conda env is activated')
+        if os.environ['CONDA_DEFAULT_ENV'] not in valid_envs:
+            msg = ['To run commands, activate one of the valid environments (set in config-publisher.yaml):']
+            for env in valid_envs:
+                msg.append(f'  {env}')
+            msg.append('Example: ')
+            cmd = f'conda activate {env}'
+            msg.append(f'  {cmd}')
+            raise OSError('\n'.join(msg))
+
     else:
         raise Exception('Need to specify env to run publishing commands')
 
@@ -587,8 +603,9 @@ if __name__ == '__main__':
         # Generate mapfiles. These are small files containing info about each dataset,
         # including the checksums of its files.
 
-        # Check that correct env is activated
-        check_env(config_pub['mapfile'])
+        if do_cmds:
+            # Check that correct env is activated
+            check_env(config_pub['mapfile'])
 
         # Get info to construct mapfile paths
         mapfile_path_template = config_pub['mapfile']['mapfile_subdir'][project]
@@ -636,8 +653,9 @@ if __name__ == '__main__':
     if args.publish:
         # Publish to ESGF. This assumes that mapfiles have already been generated.
 
-        # Check that correct env is activated
-        check_env(config_pub['publish'])
+        if do_cmds:
+            # Check that correct env is activated
+            check_env(config_pub['publish'])
 
         # Get info to construct mapfile paths
         mapfile_path_template = config_pub['mapfile']['mapfile_subdir'][project]
