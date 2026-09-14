@@ -69,6 +69,7 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries
     '''
     Execute list of commands.
     Checks return codes of commands and stops if a command fails.
+    If do_cmds=False, the commands that would have been executed are displayed (without running them).
 
     Arguments
     ---------
@@ -132,12 +133,16 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries
                     attempt += 1
 
             if exit_status != 0:
-                # Command failed, so don't attempt any subsequent commands
+                # If the command did not ultimately succeed (whether it was tried many times or just once),
+                # don't attempt subsequent commands (if any).
+                cmd_result['time'] = time.time() - start_time
                 break
+
         else:
             # Show command that would have been executed
             print(cmd)
             cmd_result.update({'exit_status': 'N/A', 'attempt': 0})
+
         # Record time taken to complete the command (units: seconds)
         cmd_result['time'] = time.time() - start_time
 
