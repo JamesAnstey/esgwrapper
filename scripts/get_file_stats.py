@@ -44,6 +44,9 @@ def parse_args():
     parser.add_argument('-m', '--mod-time', action='store_true', default=False,
                         help='get time of most recent content modification')
 
+    parser.add_argument('-n', '--number', type=int,
+                        help='number of datasets to use from list of datasets (default: all)')
+
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -54,10 +57,15 @@ if __name__ == '__main__':
     with open(args.input) as f:
         inventory = json.load(f)
 
-    dataset_ids = sorted(inventory['datasets'].keys())
+    datasets = inventory['datasets']
+    dataset_ids = sorted(datasets.keys(), key=str.lower)
+    if args.number:
+        dataset_ids = dataset_ids[:args.number]
+    datasets = OrderedDict({s : datasets[s] for s in dataset_ids})
+    del dataset_ids
+
     file_stats = OrderedDict()
-    for dataset_id in dataset_ids:
-        info = inventory['datasets'][dataset_id]
+    for dataset_id, info in datasets.items():
         file_stats[dataset_id] = OrderedDict({
             'path': info['path'],
             'files': OrderedDict()
