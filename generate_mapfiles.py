@@ -65,9 +65,6 @@ if __name__ == '__main__':
     if args.number:
         dataset_ids = dataset_ids[:args.number]
 
-    if True:
-        dataset_ids = ['MIP-DRS7.CMIP7.CMIP.CCCma.CanESM5-1.1pctCO2.r1i1p2f1.glb.mon.pr.tavg-u-hxy-u.g120.v20190429']
-
     datasets = OrderedDict({s : datasets[s] for s in dataset_ids})
     del dataset_ids
     for dataset_id, info in datasets.items():
