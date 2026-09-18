@@ -28,6 +28,10 @@ from esgfsearch import search, show_params, parse_file_size_str, file_size_str
 
 DATE_FORMAT = '%d %b %Y, %H:%M:%S UTC'
 
+DEFAULT_DATASETS_FILE = 'datasets.json'
+DEFAULT_INVENTORY_FILE = 'inventory.json'
+
+
 def check_env(config):
     '''
     Check that correct environment is active.
@@ -173,12 +177,16 @@ def parse_args():
 
     parser.add_argument('-c', '--config', type=str, default='config-datasets.yaml',
                         help='name of config file containing datasets to publish, default: %(default)s')
+
     # Define different publishing actions as input flags
-    default_datasets_file = 'datasets.json'
     actions = OrderedDict({
+        'inventory': {
+            'short': '-i',
+            'help': f'inventory datasets and write info on them to json file (default: {DEFAULT_INVENTORY_FILE})'
+        },
         'datasets': {
             'short': '-d',
-            'help': f'find datasets to publish and write info on them to json file (default: {default_datasets_file})'
+            'help': f'from inventory find datasets to publish and write info on them to json file (default: {DEFAULT_DATASETS_FILE})'
         },
         'mapfile': {
             'short': '-m',
@@ -188,31 +196,32 @@ def parse_args():
             'short': '-p',
             'help': 'publish to ESGF'
         },
-        'inventory': {
-            'short': '-i',
-            'help': 'do datasets inventory ' +
-                    '(equivalent to this set of options: -d -nesgf -ndreq -nval -df inventory.json)'
-        }
     })
     for action, d in actions.items():
         parser.add_argument(d['short'], f'--{action}', action='store_true', default=False, help=d['help'])
-    # Additional arguments
+
     parser.add_argument('-dry', '--dry-run', action='store_true', default=False,
                         help='show commands but don\'t execute them')
+
     parser.add_argument('-max', '--max-size', type=str,
                         help='maximum size of dataset to retain, examples: "1 GB", 1GB, 1G')
     parser.add_argument('-min', '--min-size', type=str,
                         help='minimum size of dataset to retain, examples: "1 GB", 1GB, 1G')
     parser.add_argument('-nxr', '--no-xarray', action='store_true', default=False,
                         help='use --no-xarray argument to esgpublish (prevents failure on large datasets)')
-    parser.add_argument('-df', '--datasets-file', type=str, default=default_datasets_file,
+
+    parser.add_argument('-if', '--inventory-file', type=str, default=DEFAULT_INVENTORY_FILE,
+                        help='name of inventory output json file')
+    parser.add_argument('-df', '--datasets-file', type=str, default=DEFAULT_DATASETS_FILE,
                         help='name of datasets output json file')
+
     parser.add_argument('-nesgf', '--no-esgf-search', action='store_true', default=False,
                         help='turn off ESGF search that checks whether datasets are already published')
     parser.add_argument('-ndreq', '--no-data-request', action='store_true', default=False,
                         help='turn off filtering based on the data request')
     parser.add_argument('-nval', '--no-validation', action='store_true', default=False,
                         help='turn off checking of validation list (Stamp of Approval) - use with caution!')
+
     parser.add_argument('-r', '--retries', type=int, default=0,
                         help='number of times to retry publishing command if it fails (default: 0)')
     parser.add_argument('-s', '--start', type=int,
@@ -251,6 +260,9 @@ def load_config_file(config_file: str) -> dict:
 if __name__ == '__main__':
 
     args = parse_args()
+
+    if args.inventory_file:
+        inventory_file = args.inventory_file
     if args.datasets_file:
         datasets_file = args.datasets_file
 
@@ -263,6 +275,8 @@ if __name__ == '__main__':
     qc_reports_dir = 'ccreport'
     if not os.path.exists(qc_reports_dir):
         os.makedirs(qc_reports_dir)
+
+    get_size = True
 
     ##############################################################################
     # Load dataset configuration settings from config file
@@ -277,36 +291,20 @@ if __name__ == '__main__':
     # Load configuration settings for publishing commands
     config_pub = load_config_file(os.path.join(repo_path, 'esg_ng', 'config-publisher.yaml'))
 
+    dataset_template = config_pub['DRS'][project]['dataset']
+
     ##############################################################################
-    if args.datasets or args.inventory:
+    if args.inventory:
         # Determine datasets to publish, write them to datasets_file
 
-        search_esgf = not args.no_esgf_search
-        check_data_request = not args.no_data_request
-        do_validation = not args.no_validation
-        search_esgf_ng = False
-        if args.inventory:
-            search_esgf = False
-            check_data_request = False
-            do_validation = False
-            datasets_file = 'inventory.json'
-        if args.cmip7_dev:
-            search_esgf = False
-            check_data_request = False
-            do_validation = False
-
-            search_esgf_ng = True
-
-        get_size = True
         if args.max_size:
             max_size = parse_file_size_str(args.max_size)
         if args.min_size:
             min_size = parse_file_size_str(args.min_size)
 
         base_paths = config_dat['paths']  # top-level paths to search at
-        dataset_paths = config_dat['datasets']  # datasets to search (dir path for some level in the DRS dir tree)
+        dataset_paths = config_dat['inventory']  # datasets to search (dir path for some level in the DRS dir tree)
 
-        dataset_template = config_pub['DRS'][project]['dataset']
         path_template = config_pub['DRS'][project]['path']
         file_template = config_pub['DRS'][project]['file']  # not currently needed (but might be for some projects?)
 
@@ -326,9 +324,54 @@ if __name__ == '__main__':
                 datasets.update(d)
                 del d
 
-        print(f'Found {len(datasets)} datasets')
+        datasets = OrderedDict({s : datasets[s] for s in sorted(datasets.keys(), key=str.lower)})
 
-        # Apply filters specified in config-datasets file
+        dataset_sep = '.'
+        dataset_parameters = [s.strip('{').strip('}') for s in dataset_template.split(dataset_sep)]
+        param_unique_values = get_unique_param_values(datasets, dataset_parameters)
+        if any([len(vals) > 0 for vals in param_unique_values.values()]):
+            print('Unique parameter values:')
+            for p in dataset_parameters:
+                print(f'  {p} : ' + ', '.join(param_unique_values[p]))
+        out = OrderedDict({
+            'Header' : {
+                'date of inventory': datetime.now(UTC).strftime(DATE_FORMAT),
+                'base paths searched': searched_base_paths,
+                'dataset paths searched': dataset_paths,
+                'no. of datasets found': len(datasets),
+                'unique parameter values': param_unique_values,
+        },
+            'datasets' : datasets
+        })
+        print(f'Found {len(datasets)} datasets')
+        filepath = inventory_file
+        with open(filepath, 'w') as f:
+            json.dump(out, f, indent=4)
+            print(f'Wrote {filepath} with {len(datasets)} datasets')
+
+
+    ##############################################################################
+    if args.datasets:
+        # Load inventory
+        filepath = inventory_file
+        with open(filepath, 'r') as f:
+            datasets = json.load(f)['datasets']
+            print('Loaded ' + filepath)
+
+        # Set flags that determine what gets done below
+        search_esgf = not args.no_esgf_search
+        check_data_request = not args.no_data_request
+        do_validation = not args.no_validation
+        search_esgf_ng = False
+        if args.cmip7_dev:
+            # TODO: revise all of this to make these choices less ad-hoc
+            search_esgf = False
+            check_data_request = False
+            do_validation = False
+            search_esgf_ng = True
+
+        # Apply filters from the config-datasets file
+        config_dat = {'keep':{}, 'exclude':{}} | config_dat
         if config_dat['keep']:
             print('Keeping datasets with these parameter values:')
             show_params(config_dat['keep'], indent='  ')
@@ -546,8 +589,8 @@ if __name__ == '__main__':
         out = OrderedDict({
             'Header' : {
                 'date of search' : datetime.now(UTC).strftime(DATE_FORMAT),
-                'paths searched' : searched_base_paths,
-                'no. of datasets' : len(datasets),
+                'inventory file' : inventory_file,
+                'no. of datasets retained' : len(datasets),
                 'unique parameter values' : param_unique_values,
         },
             'datasets' : datasets
@@ -569,6 +612,7 @@ if __name__ == '__main__':
         with open(filepath, 'w') as f:
             json.dump(out, f, indent=4)
             print(f'Wrote {filepath} with {len(datasets)} datasets')
+
 
     # config_dat is not used after this point since all info on datasets to be published
     # should be in the output json file datasets_file.
