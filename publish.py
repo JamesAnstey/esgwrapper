@@ -684,7 +684,7 @@ if __name__ == '__main__':
         k = 0
         for dataset_id, info in datasets.items():
             k += 1
-            print(f'\nPublishing dataset ({k} of {n}): {dataset_id}')
+            print(f'\nPublishing dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
 
             # Find mapfile for this dataset
             mapfile_path = os.path.join(mapfile_base_path, mapfile_path_template.format(**info['params']))

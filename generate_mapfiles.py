@@ -62,10 +62,12 @@ if __name__ == '__main__':
     # MIP-DRS7.CMIP7.CMIP.CCCma.CanESM5-1.1pctCO2.r1i1p2f1.glb.mon.pr.tavg-u-hxy-u.g120.v20190429 | /space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP7/final/MIP-DRS7/CMIP7/CMIP/CCCma/CanESM5-1/1pctCO2/r1i1p2f1/glb/mon/pr/tavg-u-hxy-u/g120/v20190429/pr_tavg-u-hxy-u_mon_glb_g120_CanESM5-1_1pctCO2_r1i1p2f1_185001-190012.nc | 16055367 | mod_time=1787125699.7238321 | checksum=47e91c66d8ee78a26ef10b103bc9b981a628d855fb92380d89a91ac9e694f8d0 | checksum_type=SHA256
     contents_template = '{dataset_id} | {filepath} | {size} | mod_time={mod_time} | checksum={chksum} | checksum_type={chksum_type}'
 
+    # mapfile_dir: top-level output path for storing mapfiles
+    # mapfile_subdir_template (if given): how to construct subdirs for mapfiles
     mapfile_dir = args.outdir
-    if not os.path.exists(mapfile_dir):
-        os.makedirs(mapfile_dir)
     mapfile_dir = Path(mapfile_dir)
+    # TODO: avoid hard-coding this for cmip7, get from config-publisher.yaml instead
+    mapfile_subdir_template = '{drs_specs}/{mip_era}/{activity_id}/{institution_id}/{source_id}/{experiment_id}/{variant_label}'
 
     with open(args.input) as f:
         d = json.load(f)
@@ -90,19 +92,24 @@ if __name__ == '__main__':
     n, k = len(datasets), 0
     time_taken = {}
     for dataset_id, info in datasets.items():
+        k += 1
+        path, filenames = info['path'], info['filenames']
+        logger.info(f' Generating mapfile for dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
+        logger.info(f' Dataset path: {path}')
 
         # Example mapfile filename for CMIP7:
         #   MIP-DRS7.CMIP7.ScenarioMIP.CCCma.CanESM5-1.esm-scen7-h.r18i1p2f1.glb.mon.wmo.tavg-ol-hxy-sea.g127.v20190429.map
-        outfile = mapfile_dir / f'{dataset_id}.map'
+
+        mapfile_subdir = mapfile_subdir_template.format(**info['params'])
+        outpath = mapfile_dir / mapfile_subdir
+        if not os.path.exists(outpath):
+            os.makedirs(outpath)
+        outfile = outpath / f'{dataset_id}.map'
         if not args.clobber and os.path.exists(outfile):
             logger.info(f' Not overwriting existing mapfile: {outfile}')
             continue
 
-        path, filenames = info['path'], info['filenames']
         contents = OrderedDict()
-        k += 1
-        logger.info(f' Generating mapfile for dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
-        logger.info(f' Dataset path: {path}')
         start_time = time.time()
         for filename in filenames:
             file_stat = {
