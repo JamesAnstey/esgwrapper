@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 '''
 Generate mapfiles for use with esgpublish (from esgcet package).
-
-Example contents of a CMIP7 mapfile (there's one line like this for each file in a dataset):
-
-MIP-DRS7.CMIP7.CMIP.CCCma.CanESM5-1.1pctCO2.r1i1p2f1.glb.mon.pr.tavg-u-hxy-u.g120.v20190429 | /space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP7/final/MIP-DRS7/CMIP7/CMIP/CCCma/CanESM5-1/1pctCO2/r1i1p2f1/glb/mon/pr/tavg-u-hxy-u/g120/v20190429/pr_tavg-u-hxy-u_mon_glb_g120_CanESM5-1_1pctCO2_r1i1p2f1_185001-190012.nc | 16055367 | mod_time=1787125699.7238321 | checksum=47e91c66d8ee78a26ef10b103bc9b981a628d855fb92380d89a91ac9e694f8d0 | checksum_type=SHA256
-
 '''
 
 import argparse
@@ -59,11 +54,9 @@ if __name__ == '__main__':
 
     path_switch = not args.orig_path
 
-    # Example mapfile filename for CMIP7:
-    #   MIP-DRS7.CMIP7.ScenarioMIP.CCCma.CanESM5-1.esm-scen7-h.r18i1p2f1.glb.mon.wmo.tavg-ol-hxy-sea.g127.v20190429.map
-    # dataset_template = config_pub['DRS'][project]['dataset']
-    # filename_template = dataset_template + '.map'
-    contents_template = '{dataset_id} | {path} | {filename} | {size} | mod_time={mod_time} | checksum={chksum} | chksum_type={chksum_type}'
+    # Example contents of a CMIP7 mapfile (there's one line like this for each file in a dataset):
+    # MIP-DRS7.CMIP7.CMIP.CCCma.CanESM5-1.1pctCO2.r1i1p2f1.glb.mon.pr.tavg-u-hxy-u.g120.v20190429 | /space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP7/final/MIP-DRS7/CMIP7/CMIP/CCCma/CanESM5-1/1pctCO2/r1i1p2f1/glb/mon/pr/tavg-u-hxy-u/g120/v20190429/pr_tavg-u-hxy-u_mon_glb_g120_CanESM5-1_1pctCO2_r1i1p2f1_185001-190012.nc | 16055367 | mod_time=1787125699.7238321 | checksum=47e91c66d8ee78a26ef10b103bc9b981a628d855fb92380d89a91ac9e694f8d0 | checksum_type=SHA256
+    contents_template = '{dataset_id} | {filepath} | {size} | mod_time={mod_time} | checksum={chksum} | checksum_type={chksum_type}'
 
     mapfile_dir = args.outdir
     if not os.path.exists(mapfile_dir):
@@ -102,8 +95,7 @@ if __name__ == '__main__':
             logger.info(f' {filename}')
             file_stat = {
                 'dataset_id': dataset_id,
-                'path': path,
-                'filename': filename,
+                'filepath': os.path.join(path, filename)
             }
             filepath = Path(path) / filename
             stat = os.stat(filepath)
@@ -119,17 +111,19 @@ if __name__ == '__main__':
         if path_switch:
             for filename, file_stat in contents.items():
                 for orig_path, new_path in PATH_SWITCH.items():
-                    if file_stat['path'].startswith(orig_path):
-                        rel_path = file_stat['path'].partition(orig_path)[-1].strip('/')
-                        file_stat['path'] = os.path.normpath(os.path.join(new_path, rel_path))
+                    if file_stat['filepath'].startswith(orig_path):
+                        rel_path = file_stat['filepath'].partition(orig_path)[-1].strip(os.path.sep)
+                        file_stat['filepath'] = os.path.normpath(os.path.join(new_path, rel_path))
 
         lines = []
         for filename in filenames:
             lines.append(contents_template.format(**contents[filename]))
 
+        # Example mapfile filename for CMIP7:
+        #   MIP-DRS7.CMIP7.ScenarioMIP.CCCma.CanESM5-1.esm-scen7-h.r18i1p2f1.glb.mon.wmo.tavg-ol-hxy-sea.g127.v20190429.map
         outfile = mapfile_dir / f'{dataset_id}.map'
         with open(outfile, 'w') as f:
-            f.write('\n'.join(lines))
+            f.write('\n'.join(lines) + '\n')
 
         time_taken[dataset_id] = time.time() - start_time
         logger.info(f' Time (s) for {dataset_id}: {time_taken[dataset_id]}')
