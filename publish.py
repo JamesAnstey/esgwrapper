@@ -312,11 +312,12 @@ if __name__ == '__main__':
         searched_base_paths = []
         for base_path in base_paths:
             if os.path.exists(base_path):
-                print('Searching path: ' + base_path)
+                print('Searching base path: ' + base_path)
                 searched_base_paths.append(base_path)
             else:
-                print('Path not found: ' + base_path)
+                print('Base path not found: ' + base_path)
             for dataset_path in dataset_paths:
+                print('Searching path (relative to base path): ' + dataset_path)
                 d = find_datasets(project,
                                   base_path, dataset_path,
                                   dataset_template, path_template, file_template,
