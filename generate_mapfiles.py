@@ -11,11 +11,23 @@ MIP-DRS7.CMIP7.CMIP.CCCma.CanESM5-1.1pctCO2.r1i1p2f1.glb.mon.pr.tavg-u-hxy-u.g12
 import argparse
 import hashlib
 import json
+import logging
 import os
+import sys
+import time
+
 from collections import OrderedDict
 from pathlib import Path
 
-from publish import load_config_file
+logger = logging.getLogger('generate_mapfiles')
+# logging.basicConfig(filename='mapfile_generation.log', filemode='w', level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    handlers=[
+        logging.FileHandler('mapfile_generation.log', mode='w'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 
 chksum_type = 'sha256'
 
@@ -37,7 +49,8 @@ def parse_args():
                         help='number of datasets to use from list of datasets (default: all)')
     parser.add_argument('--orig-path', action='store_true', default=False,
                         help='leave the original path unaltered (ignore any path aliases)')
-    
+    parser.add_argument('-id', '--dataset-ids', type=str,
+                        help='dataset ids to use: comma-separated list, or file listing datasets')
 
     return parser.parse_args()
 
@@ -62,15 +75,31 @@ if __name__ == '__main__':
         datasets = d['datasets']
 
     dataset_ids = sorted(datasets.keys(), key=str.lower)
+
+    if args.dataset_ids:
+        if os.path.exists(args.dataset_ids):
+            with open(args.dataset_ids) as f:
+                dataset_ids = f.readlines()
+        else:
+            dataset_ids = args.dataset_ids.split(',')
+        dataset_ids = [s.strip() for s in dataset_ids]
+
     if args.number:
         dataset_ids = dataset_ids[:args.number]
 
     datasets = OrderedDict({s : datasets[s] for s in dataset_ids})
     del dataset_ids
+
+    n, k = len(datasets), 0
+    time_taken = {}
     for dataset_id, info in datasets.items():
         path, filenames = info['path'], info['filenames']
         contents = OrderedDict()
+        k += 1
+        logger.info(f' Generating mapfile for dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
+        start_time = time.time()
         for filename in filenames:
+            logger.info(f' {filename}')
             file_stat = {
                 'dataset_id': dataset_id,
                 'path': path,
@@ -101,3 +130,6 @@ if __name__ == '__main__':
         outfile = mapfile_dir / f'{dataset_id}.map'
         with open(outfile, 'w') as f:
             f.write('\n'.join(lines))
+
+        time_taken[dataset_id] = time.time() - start_time
+        logger.info(f' Time (s) for {dataset_id}: {time_taken[dataset_id]}')
