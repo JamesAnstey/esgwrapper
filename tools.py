@@ -70,6 +70,7 @@ def _validate_dataset_filename(project: str, filename: str, params: dict, file_t
     return all(check)
 
 TIME_STR_FORMAT_BY_LENGTH = {
+    4: '%Y', # example: '2022'
     6: '%Y%m', # example: '185001'
     8: '%Y%m%d', # example: '18500101'
     12: '%Y%m%d%H%M', # example: '202201010300'

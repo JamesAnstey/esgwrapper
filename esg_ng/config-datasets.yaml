@@ -1,7 +1,7 @@
 
 project: cmip7
 
-datasets:
+inventory:
   # - MIP-DRS7/CMIP7/CMIP/CCCma/CanESM5-1/piControl/r1i1p2f1/glb/mon/uas
   - MIP-DRS7/CMIP7
 
