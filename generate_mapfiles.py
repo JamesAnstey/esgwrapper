@@ -14,6 +14,8 @@ import time
 from collections import OrderedDict
 from pathlib import Path
 
+from esgfsearch import file_size_str
+
 logger = logging.getLogger('generate_mapfiles')
 # logging.basicConfig(filename='mapfile_generation.log', filemode='w', level=logging.INFO)
 logging.basicConfig(
@@ -42,6 +44,8 @@ def parse_args():
 
     parser.add_argument('-n', '--number', type=int,
                         help='number of datasets to use from list of datasets (default: all)')
+    parser.add_argument('--clobber', action='store_true', default=False,
+                        help='overwrite mapfile if it already exists')
     parser.add_argument('--orig-path', action='store_true', default=False,
                         help='leave the original path unaltered (ignore any path aliases)')
     parser.add_argument('-id', '--dataset-ids', type=str,
@@ -86,13 +90,21 @@ if __name__ == '__main__':
     n, k = len(datasets), 0
     time_taken = {}
     for dataset_id, info in datasets.items():
+
+        # Example mapfile filename for CMIP7:
+        #   MIP-DRS7.CMIP7.ScenarioMIP.CCCma.CanESM5-1.esm-scen7-h.r18i1p2f1.glb.mon.wmo.tavg-ol-hxy-sea.g127.v20190429.map
+        outfile = mapfile_dir / f'{dataset_id}.map'
+        if not args.clobber and os.path.exists(outfile):
+            logger.info(f' Not overwriting existing mapfile: {outfile}')
+            continue
+
         path, filenames = info['path'], info['filenames']
         contents = OrderedDict()
         k += 1
         logger.info(f' Generating mapfile for dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
+        logger.info(f' Dataset path: {path}')
         start_time = time.time()
         for filename in filenames:
-            logger.info(f' {filename}')
             file_stat = {
                 'dataset_id': dataset_id,
                 'filepath': os.path.join(path, filename)
@@ -101,6 +113,7 @@ if __name__ == '__main__':
             stat = os.stat(filepath)
             file_stat['size'] = stat.st_size
             file_stat['mod_time'] = stat.st_mtime
+            logger.info(f' {filename} ({file_size_str(file_stat["size"])})')
             with open(filepath, 'rb') as f:
                 file_stat.update({
                     'chksum': hashlib.file_digest(f, chksum_type).hexdigest(),
@@ -119,11 +132,20 @@ if __name__ == '__main__':
         for filename in filenames:
             lines.append(contents_template.format(**contents[filename]))
 
-        # Example mapfile filename for CMIP7:
-        #   MIP-DRS7.CMIP7.ScenarioMIP.CCCma.CanESM5-1.esm-scen7-h.r18i1p2f1.glb.mon.wmo.tavg-ol-hxy-sea.g127.v20190429.map
-        outfile = mapfile_dir / f'{dataset_id}.map'
         with open(outfile, 'w') as f:
             f.write('\n'.join(lines) + '\n')
 
         time_taken[dataset_id] = time.time() - start_time
         logger.info(f' Time (s) for {dataset_id}: {time_taken[dataset_id]}')
+        logger.info(f' Wrote {outfile}')
+
+    total_time = sum(time_taken.values())
+    total_size = sum([info['size (bytes)'] for info in datasets.values()])
+    size_str = file_size_str(total_size)
+    fmt = '%.2f'
+    # logger.info(' SUMMARY:')
+    logger.info(f'\n  Total time for mapfile generation: {fmt % total_time} s '
+                f'({fmt % (total_time/60)} min, {fmt % (total_time/3600)} hr)'
+                f'\n  Total no. of datasets: {len(datasets)}'
+                f'\n  Total size of datasets: {size_str}'
+                )
