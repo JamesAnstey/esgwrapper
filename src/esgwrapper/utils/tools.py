@@ -4,6 +4,8 @@ import json
 import logging
 import numpy as np
 import os
+import yaml
+
 from collections import OrderedDict, defaultdict
 from datetime import datetime
 
@@ -11,8 +13,19 @@ import esgvoc.api as ev
 
 from esgwrapper.utils.esgfsearch import file_size_str
 
-logger = logging.getLogger('esgwrapper')
-logging.basicConfig(filename='esgwrapper.log', filemode='w', level=logging.INFO)
+# logger = logging.getLogger('esgwrapper')
+# logging.basicConfig(filename='esgwrapper.log', filemode='w', level=logging.INFO)
+
+def load_config_file(config_file: str | pathlib.PosixPath) -> dict:
+    '''
+    Load yaml configuration file and return contents as dict.
+    '''
+    if not os.path.exists(config_file):
+        raise OSError('Config file not found: ' + config_file)
+    with open(config_file) as f:
+        config = yaml.safe_load(f)
+        print('Loaded ' + str(config_file))
+    return config
 
 def match_params(params, reference):
     # Loop over parameters (p) in the reference, checking for matches in each of them

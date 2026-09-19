@@ -20,8 +20,11 @@ from collections import OrderedDict
 from datetime import datetime, UTC
 from pystac_client import Client
 
-from esgwrapper.utils.tools import (find_datasets, get_unique_param_values, match_params,
-                   publication_checks, data_request_checks, get_dreq_validation_file)
+from esgwrapper import CONFIG_FILES
+from esgwrapper.utils.tools import (load_config_file,
+                                    find_datasets, get_unique_param_values, match_params,
+                                    publication_checks,
+                                    data_request_checks, get_dreq_validation_file)
 from esgwrapper.utils.esgfsearch import search, show_params, parse_file_size_str, file_size_str
 
 ##############################################################################
@@ -246,17 +249,6 @@ def parse_args():
 
     return args
 
-def load_config_file(config_file: str) -> dict:
-    '''
-    Load yaml configuration file and return contents as dict.
-    '''
-    if not os.path.exists(config_file):
-        raise OSError('Config file not found: ' + config_file)
-    with open(config_file) as f:
-        config = yaml.safe_load(f)
-        print('Loaded ' + config_file)
-    return config
-
 
 def main():
     args = parse_args()
@@ -266,34 +258,25 @@ def main():
     if args.datasets_file:
         datasets_file = args.datasets_file
 
-    log_dir = 'logs'
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-    date_run =  datetime.now(UTC).strftime('%Y%m%d_%H%M%SUTC')
-    logfile = os.path.join(log_dir, f'log_cmds_{date_run}.log')
+    # log_dir = 'logs'
+    # if not os.path.exists(log_dir):
+    #     os.makedirs(log_dir)
+    # date_run =  datetime.now(UTC).strftime('%Y%m%d_%H%M%SUTC')
+    # logfile = os.path.join(log_dir, f'log_cmds_{date_run}.log')
 
-    qc_reports_dir = 'ccreport'
-    if not os.path.exists(qc_reports_dir):
-        os.makedirs(qc_reports_dir)
+    # qc_reports_dir = 'ccreport'
+    # if not os.path.exists(qc_reports_dir):
+    #     os.makedirs(qc_reports_dir)
 
     get_size = True
 
-    ##############################################################################
     # Load dataset configuration settings from config file
     config_dat = load_config_file(args.config)
-
-    repo_path = os.environ['REPO_PATH']
-    if not os.path.exists(repo_path):
-        raise ValueError('Path to esgwrapper code repo is required, received: ' + repo_path)
-
     project = config_dat['project']
 
-    # Load configuration settings for publishing commands
-    config_pub = load_config_file(os.path.join(repo_path, 'esg_ng', 'config-publisher.yaml'))
-
+    config_pub = load_config_file(CONFIG_FILES / 'config-publisher.yaml')
     dataset_template = config_pub['DRS'][project]['dataset']
 
-    ##############################################################################
     if args.inventory:
         # Determine datasets to publish, write them to datasets_file
 
