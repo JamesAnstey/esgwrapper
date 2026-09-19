@@ -424,10 +424,11 @@ if __name__ == '__main__':
             for dataset_id, info in datasets.items():
                 if info['size (bytes)'] == 0 or info['no. of files'] == 0:
                     exclude.add(dataset_id)
-            n = len(datasets)
-            keep = [s for s in datasets if s not in exclude]
-            datasets = {s: datasets[s] for s in keep}
-            print(f'  --> excluded {n-len(datasets)} datasets that had zero size and/or no valid files')
+            if len(exclude) > 0:
+                n = len(datasets)
+                keep = [s for s in datasets if s not in exclude]
+                datasets = {s: datasets[s] for s in keep}
+                print(f'  --> excluded {n-len(datasets)} datasets that had zero size and/or no valid files')
 
         # Filter based on other criteria
         if do_validation:
