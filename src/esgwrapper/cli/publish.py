@@ -20,9 +20,9 @@ from collections import OrderedDict
 from datetime import datetime, UTC
 from pystac_client import Client
 
-from tools import (find_datasets, get_unique_param_values, match_params,
+from esgwrapper.utils.tools import (find_datasets, get_unique_param_values, match_params,
                    publication_checks, data_request_checks, get_dreq_validation_file)
-from esgfsearch import search, show_params, parse_file_size_str, file_size_str
+from esgwrapper.utils.esgfsearch import search, show_params, parse_file_size_str, file_size_str
 
 ##############################################################################
 
@@ -257,8 +257,8 @@ def load_config_file(config_file: str) -> dict:
         print('Loaded ' + config_file)
     return config
 
-if __name__ == '__main__':
 
+def main():
     args = parse_args()
 
     if args.inventory_file:
@@ -756,3 +756,6 @@ if __name__ == '__main__':
 
     if os.path.exists(logfile):
         print(f'\nWrote logfile: {logfile}')
+
+if __name__ == '__main__':
+    main()

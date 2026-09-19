@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=61.0", "coverage", "pytest", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "esgwrapper"
+dependencies = [
+    "esgcet",
+    "esgprep",
+    "cc-plugin-wcrp",
+    "esgvoc",
+    "pystac-client",
+]
+dynamic = ["version"]
+authors = [
+  { name="James Anstey"},
+]
+description = "Workflow organizer for ESGF-NG publishing"
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = { file = "LICENSE" }
+
+[project.urls]
+Homepage = "https://github.com/JamesAnstey/esgwrapper"
+Issues = "https://github.com/JamesAnstey/esgwrapper/issues"
+
+[project.scripts]
+set_up_work_dir = "esgwrapper.cli.set_up_work_dir:main"
+generate_mapfiles = "esgwrapper.cli.generate_mapfiles:main"
+server_sync = "esgwrapper.cli.server_sync:main"
+publish = "esgwrapper.cli.publish:main"
+get_file_stats = "esgwrapper.cli.get_file_stats:main"
+
+#[tool.setuptools]
+#package-dir = {"" = "esgwrapper"}
+# package-dir = {"" = ""}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+write_to = "esgwrapper/version.py"  # updated path for version file
+
+[tool.pytest.ini_options]
+cache_dir = "esgwrapper/tests/.pytest_cache"
+
+[tool.coverage.run]
+branch = true
+parallel = true
+command_line = "-m pytest"
+source = [
+    "esgwrapper/cli",
+    "esgwrapper/utils",
+    "scripts"
+]
+data_file = "esgwrapper/tests/.coverage"
+
+[tool.coverage.report]
+fail_under = 50
+exclude_lines = [
+    'if __name__ == "__main__":'
+]
+
+[tool.coverage.html]
+directory = "esgwrapper/tests/htmlcov"
+
+[tool.coverage.xml]
+output = "esgwrapper/tests/coverage.xml"
+
+[tool.coverage.json]
+output = "esgwrapper/tests/coverage.json"
+
+[tool.coverage.lcov]
+output = "esgwrapper/tests/coverage.lcov"
+
+# [tool.setuptools.package-data]
+# "esgwrapper" = ["esgwrapper/tests/test_datasets/*.json"]

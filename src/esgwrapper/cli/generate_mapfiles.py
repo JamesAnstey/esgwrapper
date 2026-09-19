@@ -14,7 +14,7 @@ import time
 from collections import OrderedDict
 from pathlib import Path
 
-from esgfsearch import file_size_str
+from esgwrapper.utils.esgfsearch import file_size_str
 
 logger = logging.getLogger('generate_mapfiles')
 # logging.basicConfig(filename='mapfile_generation.log', filemode='w', level=logging.INFO)
@@ -53,7 +53,7 @@ def parse_args():
 
     return parser.parse_args()
 
-if __name__ == '__main__':
+def main():
     args = parse_args()
 
     path_switch = not args.orig_path
@@ -156,3 +156,6 @@ if __name__ == '__main__':
                 f'\n  Total no. of datasets: {len(datasets)}'
                 f'\n  Total size of datasets: {size_str}'
                 )
+
+if __name__ == '__main__':
+    main()

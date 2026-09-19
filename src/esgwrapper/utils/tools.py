@@ -9,7 +9,7 @@ from datetime import datetime
 
 import esgvoc.api as ev
 
-from esgfsearch import file_size_str
+from esgwrapper.utils.esgfsearch import file_size_str
 
 logger = logging.getLogger('esgwrapper')
 logging.basicConfig(filename='esgwrapper.log', filemode='w', level=logging.INFO)
