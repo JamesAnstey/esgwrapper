@@ -8,13 +8,13 @@ https://esg-publisher.readthedocs.io/en/main/index.html
 '''
 import argparse
 import json
+import logging
 import os
 import requests
 import shutil
 import subprocess
 import sys
 import time
-import yaml
 
 from collections import OrderedDict
 from datetime import datetime, UTC
@@ -33,6 +33,8 @@ DATE_FORMAT = '%d %b %Y, %H:%M:%S UTC'
 
 DEFAULT_DATASETS_FILE = 'datasets.json'
 DEFAULT_INVENTORY_FILE = 'inventory.json'
+
+QC_REPORTS_DIR = 'ccreport'
 
 
 def check_env(config):
@@ -142,7 +144,7 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries
             if exit_status != 0:
                 # If the command did not ultimately succeed (whether it was tried many times or just once),
                 # don't attempt subsequent commands (if any).
-                cmd_result['time'] = time.time() - start_time
+                cmd_result['time_taken'] = time.time() - start_time
                 break
 
         else:
@@ -151,26 +153,26 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries
             cmd_result.update({'exit_status': 'N/A', 'attempt': 0})
 
         # Record time taken to complete the command (units: seconds)
-        cmd_result['time'] = time.time() - start_time
+        cmd_result['time_taken'] = time.time() - start_time
 
     return cmd_results
 
-def log_cmds(logfile: str, dataset_id: str, cmd_results: dict):
+def log_cmds(dataset_id: str, cmd_results: dict) -> str:
     '''
     Write success/fail status of commands.
     '''
-    msg = [dataset_id]
+    msg = []
     for cmd_result in cmd_results:
         msg += [cmd_result['cmd']]
-        cmd_result['time'] = str('%.4f' % cmd_result['time'])
-        details = 'exit_status: {exit_status}, attempts: {attempt}, time: {time} s'.format(**cmd_result)
+        exit_status, attempt = cmd_result['exit_status'], cmd_result['attempt']
+        time_taken = str('%.4f' % cmd_result['time_taken'])
+        details = f'exit_status: {exit_status}, attempts: {attempt}, time: {time_taken} s'
         if cmd_result['exit_status'] == 0:
             msg += [f'SUCCESS - {details}']
         else:
             msg += [f'FAIL - {details}']
-    msg = '\n'.join(msg) + '\n'*2
-    with open(logfile, 'a') as f:
-        f.write(msg)
+    msg = [f'   {s}' for s in msg]
+    return msg
 
 def parse_args():
 
@@ -205,6 +207,8 @@ def parse_args():
 
     parser.add_argument('-dry', '--dry-run', action='store_true', default=False,
                         help='show commands but don\'t execute them')
+    parser.add_argument('-mc', '--mapfile-clobber', action='store_true', default=False,
+                        help='overwrite mapfile if it already exists')
 
     parser.add_argument('-max', '--max-size', type=str,
                         help='maximum size of dataset to retain, examples: "1 GB", 1GB, 1G')
@@ -239,6 +243,9 @@ def parse_args():
     parser.add_argument('-api', '--api-method', type=int, default=3,
                         help='TEMPORARY specify how to use restful api to find out what datasets are already published')
 
+    parser.add_argument('-ne', '--no-env', action='store_true', default=False,
+                        help='disable environment check (user must sure correct env is activated)')
+
     args = parser.parse_args()
 
     if not any([args.__dict__[action] for action in actions]):
@@ -258,15 +265,26 @@ def main():
     if args.datasets_file:
         datasets_file = args.datasets_file
 
-    # log_dir = 'logs'
-    # if not os.path.exists(log_dir):
-    #     os.makedirs(log_dir)
-    # date_run =  datetime.now(UTC).strftime('%Y%m%d_%H%M%SUTC')
-    # logfile = os.path.join(log_dir, f'log_cmds_{date_run}.log')
+    logger = logging.getLogger('esgwrapper')
+    date_run = datetime.now(UTC)
+    date_run_str = date_run.strftime('%Y.%m.%d_%H.%M.%S_UTC')
+    logfile = f'esgwrapper_{date_run_str}.log'
 
-    # qc_reports_dir = 'ccreport'
-    # if not os.path.exists(qc_reports_dir):
-    #     os.makedirs(qc_reports_dir)
+
+    logfile = 'testing.log'
+
+
+    # logging.basicConfig(filename=logfile, filemode='w', level=logging.INFO)
+    logging.basicConfig(
+        level=logging.INFO,
+        handlers=[
+            logging.FileHandler(logfile, mode='w'),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+
+    date_run_str = date_run.strftime('%b %d %Y, %H:%M:%S UTC')
+    logger.info(f' Starting publish.py at {date_run_str}')
 
     get_size = True
 
@@ -276,6 +294,11 @@ def main():
 
     config_pub = load_config_file(CONFIG_FILES / 'config-publisher.yaml')
     dataset_template = config_pub['DRS'][project]['dataset']
+
+    if args.mapfile_clobber:
+        mapfile_clobber = True
+    else:
+        mapfile_clobber = config_pub['mapfile']['clobber']
 
     if args.inventory:
         # Determine datasets to publish, write them to datasets_file
@@ -637,7 +660,7 @@ def main():
         # Generate mapfiles. These are small files containing info about each dataset,
         # including the checksums of its files.
 
-        if do_cmds:
+        if do_cmds and not args.no_env:
             # Check that correct env is activated
             check_env(config_pub['mapfile'])
 
@@ -661,7 +684,7 @@ def main():
         k = 0
         for dataset_id, info in datasets.items():
             k += 1
-            print(f'\nGenerating mapfile for dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
+            logger.info(f' Generating mapfile for dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
             cmd_args = {
                 'mapfile_path' : os.path.normpath(os.path.join(
                     mapfile_base_path, mapfile_path_template.format(**info['params'])
@@ -669,7 +692,7 @@ def main():
                 'dataset_path' : info['path'],
                 'project' : project,
             }
-            if not config_pub['mapfile']['clobber']:
+            if not mapfile_clobber:
                 filename = mapfile_template.format(**info['params'])
                 filepath = os.path.join(cmd_args['mapfile_path'], filename)
                 if os.path.exists(filepath):
@@ -679,15 +702,16 @@ def main():
             # Run commands to generate mapfile for this dataset
             cmd_results = exec_cmds(commands, cmd_args, do_cmds)
 
-            if do_cmds:
+            if do_cmds or True:
                 # Write logfile summarizing the results of commands
-                log_cmds(logfile, dataset_id, cmd_results)
+                for msg in log_cmds(dataset_id, cmd_results):
+                    logger.info(msg)
 
     ##############################################################################
     if args.publish:
         # Publish to ESGF. This assumes that mapfiles have already been generated.
 
-        if do_cmds:
+        if do_cmds and not args.no_env:
             # Check that correct env is activated
             check_env(config_pub['publish'])
 
@@ -730,15 +754,17 @@ def main():
 
             if do_cmds:
                 # Write logfile summarizing the results of commands
-                log_cmds(logfile, dataset_id, cmd_results)
+                for msg in log_cmds(dataset_id, cmd_results):
+                    logger.info(msg)
 
             # If QC report output file was created, move it to a subdir
             qc_report_file = f'{dataset_id}.ccreport'
             if os.path.exists(qc_report_file):
-                shutil.move(qc_report_file, os.path.join(qc_reports_dir, qc_report_file))
+                if not os.path.exists(QC_REPORTS_DIR):
+                    os.makedirs(QC_REPORTS_DIR)
+                shutil.move(qc_report_file, os.path.join(QC_REPORTS_DIR, qc_report_file))
 
-    if os.path.exists(logfile):
-        print(f'\nWrote logfile: {logfile}')
+    print(f'\nWrote logfile: {logfile}')
 
 if __name__ == '__main__':
     main()
