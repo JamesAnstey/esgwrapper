@@ -8,166 +8,33 @@ https://esg-publisher.readthedocs.io/en/main/index.html
 '''
 import argparse
 import json
+import logging
 import os
 import requests
 import shutil
-import subprocess
 import sys
 import time
-import yaml
 
 from collections import OrderedDict
 from datetime import datetime, UTC
+from pathlib import Path
 from pystac_client import Client
+from textwrap import dedent
 
-from tools import (find_datasets, get_unique_param_values, match_params,
-                   publication_checks, data_request_checks, get_dreq_validation_file)
-from esgfsearch import search, show_params, parse_file_size_str, file_size_str
+from esgwrapper import (CONFIG_FILES_DIR, DEFAULT_DATASETS_CONFIG_FILE,
+                        DEFAULT_DATASETS_FILE, DEFAULT_INVENTORY_FILE)
+from esgwrapper.utils.commands import (check_env, exec_cmds, log_cmds)
+from esgwrapper.utils.tools import (load_config_file,
+                                    find_datasets, get_unique_param_values, match_params,
+                                    publication_checks,
+                                    data_request_checks, get_dreq_validation_file)
+from esgwrapper.utils.esgfsearch import search, show_params, parse_file_size_str, file_size_str
 
 ##############################################################################
 
 DATE_FORMAT = '%d %b %Y, %H:%M:%S UTC'
+QC_REPORTS_DIR = 'ccreport'
 
-DEFAULT_DATASETS_FILE = 'datasets.json'
-DEFAULT_INVENTORY_FILE = 'inventory.json'
-
-
-def check_env(config):
-    '''
-    Check that correct environment is active.
-    List of valid environments is given in config-publisher.yaml.
-    '''
-    if ('venv' in config) and ('conda env' in config):
-        raise ValueError('config-publisher.yaml should specify either venv or conda env, not both')
-    if 'venv' in config:
-        valid_envs = config['venv']
-        valid_envs_realpath = [os.path.realpath(env) for env in valid_envs]
-        if 'VIRTUAL_ENV' not in os.environ:
-            raise ValueError('No venv is activated')
-        if os.environ['VIRTUAL_ENV'] not in valid_envs_realpath:
-            msg = ['To run commands, activate one of the valid environments (set in config-publisher.yaml):']
-            for env in valid_envs:
-                msg.append(f'  {env}')
-            msg.append('Example: ')
-            cmd = 'source ' + os.path.join(env, 'bin/activate')
-            msg.append(f'  {cmd}')
-            raise OSError('\n'.join(msg))
-
-    elif 'conda env' in config:
-        valid_envs = config['conda env']
-        if 'CONDA_DEFAULT_ENV' not in os.environ:
-            raise ValueError('No conda env is activated')
-        if os.environ['CONDA_DEFAULT_ENV'] not in valid_envs:
-            msg = ['To run commands, activate one of the valid environments (set in config-publisher.yaml):']
-            for env in valid_envs:
-                msg.append(f'  {env}')
-            msg.append('Example: ')
-            cmd = f'conda activate {env}'
-            msg.append(f'  {cmd}')
-            raise OSError('\n'.join(msg))
-
-    else:
-        raise Exception('Need to specify env to run publishing commands')
-
-def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries: int = 0) -> list[dict]:
-    '''
-    Execute list of commands.
-    Checks return codes of commands and stops if a command fails.
-    If do_cmds=False, the commands that would have been executed are displayed (without running them).
-
-    Arguments
-    ---------
-    commands: list[str]
-        List of command templates. Example of one command template:
-        "esgmapfile make --project {project} --outdir {mapfile_path} --directory {dataset_path}"
-    cmd_args: dict
-        Argument:value pairs to substitute into command templates. Example:
-        {'project': 'cmip7'}
-    do_cmds: bool
-        True ==> execute the commands
-        False ==> show the commands that would be executed, but don't execute them
-    retries: int
-        Number of times to retry a command if it fails.
-        retries = 0 ==> only try it once
-
-    Returns
-    -------
-    exit_status: int
-        Exit status of last command executed (0 = success).
-    '''
-    cmds = []
-    for cmd in commands:
-        cmds.append( cmd.format(**cmd_args) )
-
-    exit_status = None
-    attempt = 1
-    max_attempts = 1 + retries
-    start_time = time.time()
-    cmd_results = []
-    for cmd in cmds:
-        cmd_result = {'cmd': cmd}
-        cmd_results.append(cmd_result)
-        if do_cmds:
-            while attempt <= max_attempts:
-                if attempt > 1:
-                    # Show message saying this is a retry
-                    print(f'Returned exit status={exit_status}, retrying (attempt {attempt} of {max_attempts})')
-                print(cmd)
-
-                # Using subprocess.run works fine but the stdout is not seen by the user
-                # result = subprocess.run(cmd.split(), capture_output=True, text=True)
-                # exit_status = result.returncode
-
-                # Using subprocess.Popen allows user to see the stdout
-                result = subprocess.Popen(
-                    cmd.split(),
-                    stdout=sys.stdout, # preserves colour (if any) in the stdout
-                    stderr=sys.stderr,
-                    text=True,
-                )
-                result.communicate()
-                exit_status = result.returncode
-
-                cmd_result.update({'exit_status': exit_status, 'attempt': attempt})
-                if exit_status == 0:
-                    # Command has succeeded, so exit the retry loop
-                    break
-                else:
-                    # Command failed
-                    attempt += 1
-
-            if exit_status != 0:
-                # If the command did not ultimately succeed (whether it was tried many times or just once),
-                # don't attempt subsequent commands (if any).
-                cmd_result['time'] = time.time() - start_time
-                break
-
-        else:
-            # Show command that would have been executed
-            print(cmd)
-            cmd_result.update({'exit_status': 'N/A', 'attempt': 0})
-
-        # Record time taken to complete the command (units: seconds)
-        cmd_result['time'] = time.time() - start_time
-
-    return cmd_results
-
-def log_cmds(logfile: str, dataset_id: str, cmd_results: dict):
-    '''
-    Write success/fail status of commands.
-    '''
-    msg = [dataset_id]
-    for cmd_result in cmd_results:
-        msg += [cmd_result['cmd']]
-        cmd_result['time'] = str('%.4f' % cmd_result['time'])
-        details = 'exit_status: {exit_status}, attempts: {attempt}, time: {time} s'.format(**cmd_result)
-        if cmd_result['exit_status'] == 0:
-            msg += [f'SUCCESS - {details}']
-        else:
-            msg += [f'FAIL - {details}']
-    msg = '\n'.join(msg) + '\n'*2
-    with open(logfile, 'a') as f:
-        f.write(msg)
 
 def parse_args():
 
@@ -175,7 +42,7 @@ def parse_args():
         description='Publish CCCma datasets to ESGF'
         )
 
-    parser.add_argument('-c', '--config', type=str, default='config-datasets.yaml',
+    parser.add_argument('-c', '--config', type=str, default=DEFAULT_DATASETS_CONFIG_FILE,
                         help='name of config file containing datasets to publish, default: %(default)s')
 
     # Define different publishing actions as input flags
@@ -202,6 +69,11 @@ def parse_args():
 
     parser.add_argument('-dry', '--dry-run', action='store_true', default=False,
                         help='show commands but don\'t execute them')
+    parser.add_argument('-v', '--verbose', action='store_true', default=False,
+                       help='show logging info on stdout')
+
+    parser.add_argument('-mc', '--mapfile-clobber', action='store_true', default=False,
+                        help='overwrite mapfile if it already exists')
 
     parser.add_argument('-max', '--max-size', type=str,
                         help='maximum size of dataset to retain, examples: "1 GB", 1GB, 1G')
@@ -236,6 +108,9 @@ def parse_args():
     parser.add_argument('-api', '--api-method', type=int, default=3,
                         help='TEMPORARY specify how to use restful api to find out what datasets are already published')
 
+    parser.add_argument('-ne', '--no-env', action='store_true', default=False,
+                        help='disable environment check (user must sure correct env is activated)')
+
     args = parser.parse_args()
 
     if not any([args.__dict__[action] for action in actions]):
@@ -246,19 +121,8 @@ def parse_args():
 
     return args
 
-def load_config_file(config_file: str) -> dict:
-    '''
-    Load yaml configuration file and return contents as dict.
-    '''
-    if not os.path.exists(config_file):
-        raise OSError('Config file not found: ' + config_file)
-    with open(config_file) as f:
-        config = yaml.safe_load(f)
-        print('Loaded ' + config_file)
-    return config
 
-if __name__ == '__main__':
-
+def main():
     args = parse_args()
 
     if args.inventory_file:
@@ -266,36 +130,44 @@ if __name__ == '__main__':
     if args.datasets_file:
         datasets_file = args.datasets_file
 
-    log_dir = 'logs'
+    logger = logging.getLogger('esgwrapper')
+    date_run = datetime.now(UTC)
+    date_run_str = date_run.strftime('%Y.%m.%d_%H.%M.%S_UTC')
+    log_dir = Path('logs')
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    date_run =  datetime.now(UTC).strftime('%Y%m%d_%H%M%SUTC')
-    logfile = os.path.join(log_dir, f'log_cmds_{date_run}.log')
+    logfile = log_dir / f'esgwrapper_{date_run_str}.log'
+    # logging.basicConfig(filename=logfile, filemode='w', level=logging.INFO)
+    handlers = [logging.FileHandler(logfile, mode='w')]
+    if args.verbose:
+        handlers.append(logging.StreamHandler(sys.stdout))
+    logging.basicConfig(
+        level=logging.INFO,
+        handlers=handlers
+    )
 
-    qc_reports_dir = 'ccreport'
-    if not os.path.exists(qc_reports_dir):
-        os.makedirs(qc_reports_dir)
+    date_run_str = date_run.strftime(DATE_FORMAT)
+    logger.info(f' Starting publish.py at {date_run_str}')
+    time_taken = time.time()
 
     get_size = True
 
-    ##############################################################################
     # Load dataset configuration settings from config file
     config_dat = load_config_file(args.config)
-
-    repo_path = os.environ['REPO_PATH']
-    if not os.path.exists(repo_path):
-        raise ValueError('Path to esgwrapper code repo is required, received: ' + repo_path)
-
     project = config_dat['project']
 
-    # Load configuration settings for publishing commands
-    config_pub = load_config_file(os.path.join(repo_path, 'esg_ng', 'config-publisher.yaml'))
-
+    # Load publisher configuration settings from config file
+    config_pub = load_config_file(CONFIG_FILES_DIR / 'config-publisher.yaml')
     dataset_template = config_pub['DRS'][project]['dataset']
 
-    ##############################################################################
+    if args.mapfile_clobber:
+        mapfile_clobber = True
+    else:
+        mapfile_clobber = config_pub['mapfile']['clobber']
+
     if args.inventory:
         # Determine datasets to publish, write them to datasets_file
+        logger.info(' * Doing inventory of datasets *')
 
         if args.max_size:
             max_size = parse_file_size_str(args.max_size)
@@ -353,6 +225,9 @@ if __name__ == '__main__':
 
     ##############################################################################
     if args.datasets:
+        # Using the inventory file as input, select datasets to be published
+        logger.info(' * Determining publishable datasets *')
+
         # Load inventory
         filepath = inventory_file
         with open(filepath, 'r') as f:
@@ -424,10 +299,11 @@ if __name__ == '__main__':
             for dataset_id, info in datasets.items():
                 if info['size (bytes)'] == 0 or info['no. of files'] == 0:
                     exclude.add(dataset_id)
-            n = len(datasets)
-            keep = [s for s in datasets if s not in exclude]
-            datasets = {s: datasets[s] for s in keep}
-            print(f'  --> excluded {n-len(datasets)} datasets that had zero size and/or no valid files')
+            if len(exclude) > 0:
+                n = len(datasets)
+                keep = [s for s in datasets if s not in exclude]
+                datasets = {s: datasets[s] for s in keep}
+                print(f'  --> excluded {n-len(datasets)} datasets that had zero size and/or no valid files')
 
         # Filter based on other criteria
         if do_validation:
@@ -652,8 +528,9 @@ if __name__ == '__main__':
     if args.mapfile:
         # Generate mapfiles. These are small files containing info about each dataset,
         # including the checksums of its files.
+        logger.info(' * Generating mapfiles *')
 
-        if do_cmds:
+        if do_cmds and not args.no_env:
             # Check that correct env is activated
             check_env(config_pub['mapfile'])
 
@@ -677,7 +554,7 @@ if __name__ == '__main__':
         k = 0
         for dataset_id, info in datasets.items():
             k += 1
-            print(f'\nGenerating mapfile for dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
+            logger.info(f' Generating mapfile for dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
             cmd_args = {
                 'mapfile_path' : os.path.normpath(os.path.join(
                     mapfile_base_path, mapfile_path_template.format(**info['params'])
@@ -685,7 +562,7 @@ if __name__ == '__main__':
                 'dataset_path' : info['path'],
                 'project' : project,
             }
-            if not config_pub['mapfile']['clobber']:
+            if not mapfile_clobber:
                 filename = mapfile_template.format(**info['params'])
                 filepath = os.path.join(cmd_args['mapfile_path'], filename)
                 if os.path.exists(filepath):
@@ -695,15 +572,17 @@ if __name__ == '__main__':
             # Run commands to generate mapfile for this dataset
             cmd_results = exec_cmds(commands, cmd_args, do_cmds)
 
-            if do_cmds:
+            if do_cmds or True:
                 # Write logfile summarizing the results of commands
-                log_cmds(logfile, dataset_id, cmd_results)
+                for msg in log_cmds(dataset_id, cmd_results):
+                    logger.info(msg)
 
     ##############################################################################
     if args.publish:
         # Publish to ESGF. This assumes that mapfiles have already been generated.
+        logger.info(' * Publishing to ESGF *')
 
-        if do_cmds:
+        if do_cmds and not args.no_env:
             # Check that correct env is activated
             check_env(config_pub['publish'])
 
@@ -746,12 +625,24 @@ if __name__ == '__main__':
 
             if do_cmds:
                 # Write logfile summarizing the results of commands
-                log_cmds(logfile, dataset_id, cmd_results)
+                for msg in log_cmds(dataset_id, cmd_results):
+                    logger.info(msg)
 
             # If QC report output file was created, move it to a subdir
             qc_report_file = f'{dataset_id}.ccreport'
             if os.path.exists(qc_report_file):
-                shutil.move(qc_report_file, os.path.join(qc_reports_dir, qc_report_file))
+                if not os.path.exists(QC_REPORTS_DIR):
+                    os.makedirs(QC_REPORTS_DIR)
+                shutil.move(qc_report_file, os.path.join(QC_REPORTS_DIR, qc_report_file))
 
-    if os.path.exists(logfile):
-        print(f'\nWrote logfile: {logfile}')
+    time_taken = time.time() - time_taken
+    fmt = '%.2f'
+    time_msg = f' Total time taken: {fmt % time_taken} s ({fmt % (time_taken/60)} min, {fmt % (time_taken/3600)} hr)'
+    logging.info(time_msg)
+    print(dedent(f'''
+        {time_msg.strip()}
+        Wrote logfile: {logfile}
+        '''))
+
+if __name__ == '__main__':
+    main()

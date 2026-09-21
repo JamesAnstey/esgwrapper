@@ -2,8 +2,8 @@
 project: cmip7
 
 inventory:
-  # - MIP-DRS7/CMIP7/CMIP/CCCma/CanESM5-1/piControl/r1i1p2f1/glb/mon/uas
-  - MIP-DRS7/CMIP7
+  - MIP-DRS7/CMIP7/CMIP/CCCma/CanESM5-1/1pctCO2/r1i1p2f1/glb/mon/tas/tavg-h2m-hxy-u
+  # - MIP-DRS7/CMIP7
 
 keep: 
   # variable_id : [vas]

@@ -12,25 +12,16 @@ import sys
 import time
 
 from collections import OrderedDict
+from datetime import datetime, UTC
 from pathlib import Path
 
-from esgfsearch import file_size_str
-
-logger = logging.getLogger('generate_mapfiles')
-# logging.basicConfig(filename='mapfile_generation.log', filemode='w', level=logging.INFO)
-logging.basicConfig(
-    level=logging.INFO,
-    handlers=[
-        logging.FileHandler('mapfile_generation.log', mode='w'),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-
-chksum_type = 'sha256'
+from esgwrapper.utils.esgfsearch import file_size_str
 
 PATH_SWITCH = {
     '/space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP7/final': '/CCCMA_NFS/esg/esg_ng'
 }
+
+DEFAULT_CHKSUM_TYPE = 'sha256'
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -50,13 +41,32 @@ def parse_args():
                         help='leave the original path unaltered (ignore any path aliases)')
     parser.add_argument('-id', '--dataset-ids', type=str,
                         help='dataset ids to use: comma-separated list, or file listing datasets')
+    parser.add_argument('--chksum-type', type=str, default=DEFAULT_CHKSUM_TYPE,
+                        help='type of chksum to compute, default: %(default)s')
 
     return parser.parse_args()
 
-if __name__ == '__main__':
+def main():
     args = parse_args()
-
     path_switch = not args.orig_path
+    chksum_type = args.chksum_type
+
+    logger = logging.getLogger('generate_mapfiles')
+    date_run = datetime.now(UTC)
+    date_run_str = date_run.strftime('%Y.%m.%d_%H.%M.%S_UTC')
+    log_dir = Path('logs')
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    logfile = log_dir / f'mapfiles_{date_run_str}.log'
+    handlers=[
+        logging.FileHandler(logfile, mode='w'),
+        logging.StreamHandler(sys.stdout)
+    ]
+    logging.basicConfig(
+        level=logging.INFO,
+        handlers=handlers
+    )
+
 
     # Example contents of a CMIP7 mapfile (there's one line like this for each file in a dataset):
     # MIP-DRS7.CMIP7.CMIP.CCCma.CanESM5-1.1pctCO2.r1i1p2f1.glb.mon.pr.tavg-u-hxy-u.g120.v20190429 | /space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP7/final/MIP-DRS7/CMIP7/CMIP/CCCma/CanESM5-1/1pctCO2/r1i1p2f1/glb/mon/pr/tavg-u-hxy-u/g120/v20190429/pr_tavg-u-hxy-u_mon_glb_g120_CanESM5-1_1pctCO2_r1i1p2f1_185001-190012.nc | 16055367 | mod_time=1787125699.7238321 | checksum=47e91c66d8ee78a26ef10b103bc9b981a628d855fb92380d89a91ac9e694f8d0 | checksum_type=SHA256
@@ -67,7 +77,8 @@ if __name__ == '__main__':
     mapfile_dir = args.outdir
     mapfile_dir = Path(mapfile_dir)
     # TODO: avoid hard-coding this for cmip7, get from config-publisher.yaml instead
-    mapfile_subdir_template = '{drs_specs}/{mip_era}/{activity_id}/{institution_id}/{source_id}/{experiment_id}/{variant_label}'
+    # mapfile_subdir_template = '{drs_specs}/{mip_era}/{activity_id}/{institution_id}/{source_id}/{experiment_id}/{variant_label}'
+    mapfile_subdir_template = ''
 
     with open(args.input) as f:
         d = json.load(f)
@@ -156,3 +167,8 @@ if __name__ == '__main__':
                 f'\n  Total no. of datasets: {len(datasets)}'
                 f'\n  Total size of datasets: {size_str}'
                 )
+
+    print(f'\nWrote logfile: {logfile}')
+
+if __name__ == '__main__':
+    main()

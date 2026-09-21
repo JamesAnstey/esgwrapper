@@ -4,15 +4,29 @@ import json
 import logging
 import numpy as np
 import os
+import pathlib
+import yaml
+
 from collections import OrderedDict, defaultdict
 from datetime import datetime
 
 import esgvoc.api as ev
 
-from esgfsearch import file_size_str
+from esgwrapper.utils.esgfsearch import file_size_str
 
 logger = logging.getLogger('esgwrapper')
-logging.basicConfig(filename='esgwrapper.log', filemode='w', level=logging.INFO)
+
+
+def load_config_file(config_file: str | pathlib.PosixPath) -> dict:
+    '''
+    Load yaml configuration file and return contents as dict.
+    '''
+    if not os.path.exists(config_file):
+        raise OSError('Config file not found: ' + config_file)
+    with open(config_file) as f:
+        config = yaml.safe_load(f)
+        print('Loaded ' + str(config_file))
+    return config
 
 def match_params(params, reference):
     # Loop over parameters (p) in the reference, checking for matches in each of them
@@ -198,8 +212,8 @@ def find_datasets(project: str,
         params = {p:v for p,v in zip(path_params, param_values_from_path)}
         if len(param_values_from_path) == path_depth:
             dataset_id = dataset_template.format(**params)
-            logger.info(f'Found dataset: {dataset_id}')
-            logger.info(f'  path: {dirpath}')
+            logger.info(f' Found dataset: {dataset_id}')
+            logger.info(f' path: {dirpath}')
             dataset_files = set()
             invalid_files = set()
             for filename in filenames:
@@ -211,14 +225,14 @@ def find_datasets(project: str,
             dataset_files = sorted(dataset_files, key=str.lower)
             if len(invalid_files) > 0:
                 # If any invalid files were found in the dataset dir, reject it
-                logger.info(f'  REJECTED: invalid files were found in dataset dir')
+                logger.info(f' REJECTED: invalid files were found in dataset dir')
                 continue
             if len(dataset_files) == 0:
-                logger.info(f'  REJECTED: No valid dataset files were found')
+                logger.info(f' REJECTED: No valid dataset files were found')
                 continue
             if not _check_dataset_years(project, dataset_files, params):
                 # If dataset does not contain all expected years, reject it
-                logger.info(f'  REJECTED: failed time range checks (see above for why)')
+                logger.info(f' REJECTED: failed time range checks (see above for why)')
                 continue
 
             datasets[dataset_id] = {
