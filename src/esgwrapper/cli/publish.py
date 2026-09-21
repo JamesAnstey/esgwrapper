@@ -13,11 +13,13 @@ import os
 import requests
 import shutil
 import sys
+import time
 
 from collections import OrderedDict
 from datetime import datetime, UTC
 from pathlib import Path
 from pystac_client import Client
+from textwrap import dedent
 
 from esgwrapper import (CONFIG_FILES_DIR, DEFAULT_DATASETS_CONFIG_FILE,
                         DEFAULT_DATASETS_FILE, DEFAULT_INVENTORY_FILE)
@@ -146,6 +148,7 @@ def main():
 
     date_run_str = date_run.strftime(DATE_FORMAT)
     logger.info(f' Starting publish.py at {date_run_str}')
+    time_taken = time.time()
 
     get_size = True
 
@@ -632,7 +635,14 @@ def main():
                     os.makedirs(QC_REPORTS_DIR)
                 shutil.move(qc_report_file, os.path.join(QC_REPORTS_DIR, qc_report_file))
 
-    print(f'\nWrote logfile: {logfile}')
+    time_taken = time.time() - time_taken
+    fmt = '%.2f'
+    time_msg = f' Total time taken: {fmt % time_taken} s ({fmt % (time_taken/60)} min, {fmt % (time_taken/3600)} hr)'
+    logging.info(time_msg)
+    print(dedent(f'''
+        {time_msg.strip()}
+        Wrote logfile: {logfile}
+        '''))
 
 if __name__ == '__main__':
     main()
