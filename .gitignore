@@ -7,3 +7,4 @@ inventory.json
 work
 *.xlsx
 __pycache__
+esgwrapper.egg-info

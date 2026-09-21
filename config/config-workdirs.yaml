@@ -1,0 +1,31 @@
+# Properties specified are common to all created working dirs unless overridden by entries in separate_work_dirs 
+
+project: cmip7
+
+inventory:
+  drs_specs: MIP-DRS7
+  mip_era: CMIP7
+  institution_id: CCCma
+  
+  activity_id: CMIP
+  experiment_id: 1pctCO2
+
+keep:
+  frequency: [mon, fx]
+
+# Specific parameters for separate work dirs
+separate_work_dirs:
+  
+  - inventory:
+      source_id: CanESM5-1
+    keep:  
+      variable_id: [tas, pr]
+
+  - inventory:
+      source_id: CanESM6-0-MR
+    exclude:
+      branding_suffix: [tavg-al-hxy-u]
+
+paths:
+  - /space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP7/final
+  - /CCCMA_NFS/esg/esg_ng
