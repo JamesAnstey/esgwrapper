@@ -125,7 +125,7 @@ def main():
         work_dir_name = wrk.dir_name()
         work_dir_path = WORK_DIRS_LOCATION / work_dir_name
         if os.path.exists(work_dir_path) and not args.clobber:
-            print(f'Not overwriting existing work dir: {work_dir_path}')
+            print(f'\nNot overwriting existing work dir: {work_dir_path}')
             continue
 
         if prompt_user:
@@ -140,15 +140,27 @@ def main():
             if not os.path.exists(work_dir_path):
                 os.makedirs(work_dir_path)
 
+            files_to_sync = []
+
             # Create datasets config file in the work dir
-            outfile = work_dir_path / 'config-datasets.yaml'
+            filename = 'config-datasets.yaml'
+            outfile = work_dir_path / filename
             with open(outfile, 'w') as f:
                 f.write(config_dat_yaml)
+            files_to_sync.append(filename)
 
             # Copy publisher config file to work dir
             filename = args.esgcet_config
             esgcet_dir = CONFIG_FILES_DIR / 'esgcet_files'
             shutil.copy( esgcet_dir / filename, work_dir_path / filename)
+            files_to_sync.append(filename)
+
+            # Create dir for mapfiles
+            mapfiles_dirname = 'mapfiles'
+            mapfiles_path = work_dir_path / mapfiles_dirname
+            if not os.path.exists(mapfiles_path):
+                os.makedirs(mapfiles_path)
+            files_to_sync.append(mapfiles_dirname)
 
             # Create script to sync work dir to ESGF server
             server = config_wrk['server']
@@ -156,9 +168,10 @@ def main():
             hostname = server['hostname']
             work_dir_path_on_server = Path(server['work_dirs_location'])
             script_filename = 'sync_to_server.sh'
+            file_list = ' '.join(files_to_sync)
             script_contents = dedent(f'''\
                 ssh {user}@{hostname} "mkdir -p {work_dir_path_on_server / work_dir_name}"
-                rsync -tpur ../{work_dir_name} {user}@{hostname}:{work_dir_path_on_server} --exclude {script_filename}
+                rsync -tpur {file_list} {user}@{hostname}:{work_dir_path_on_server / work_dir_name}
                 ''')
             outfile = work_dir_path / script_filename
             with open(outfile, 'w') as f:
@@ -168,7 +181,7 @@ def main():
             new_permissions = permissions | stat.S_IXUSR
             os.chmod(outfile, new_permissions)
 
-            print(f'{work_dir_name} work dir is ready: {work_dir_path}')
+            print(f'{work_dir_name} work dir is ready:\n  {work_dir_path}')
 
         else:
             print(f'Skipping {work_dir_name} work dir creation')
