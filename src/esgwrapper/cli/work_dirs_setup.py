@@ -5,12 +5,15 @@ Set up working dir(s) for publishing.
 
 import argparse
 import os
+import shutil
+import stat
 import yaml
 
 from copy import deepcopy
-from textwrap import indent
+from pathlib import Path
+from textwrap import indent, dedent
 
-from esgwrapper import (CONFIG_FILES_DIR, DEFAULT_WORKDIRS_CONFIG_FILE, WORK_ROOT_DIR)
+from esgwrapper import (CONFIG_FILES_DIR, DEFAULT_WORKDIRS_CONFIG_FILE, WORK_DIRS_LOCATION)
 from esgwrapper.utils.tools import load_config_file
 
 
@@ -49,6 +52,8 @@ def parse_args():
                         help='if a work dir of the same name already exists, overwrite it')
     parser.add_argument('-np', '--no-prompt', action='store_true',
                         help='do not prompt user to confirm work dir creation')
+    parser.add_argument('-ec', '--esgcet-config', type=str, default='esg_east.yaml',
+                        help='config file for ESGF publisher to copy into work dir, default: %(default)s')
 
     return parser.parse_args()
 
@@ -80,7 +85,7 @@ def main():
         wrk.update(**d)
         work_dirs.append(wrk)
 
-    # Create dict to write a config-dataset.yaml in the work dir
+    # Set up work dirs
     for wrk in work_dirs:
 
         # Translate inventory parameters into DRS paths
@@ -100,6 +105,7 @@ def main():
             print(f'* WARNING * these attributes were ignored in the inventory path: {", ".join(unused_attrs)}')
         path = os.path.normpath(os.path.sep.join(path))
 
+        # Create dict to write a config-dataset.yaml in the work dir
         config_dat = {
             'project': wrk.project,
             'inventory': [path],
@@ -110,7 +116,8 @@ def main():
             config_dat['exclude'] = wrk.exclude
         config_dat['paths'] = wrk.paths
 
-        work_dir_path = WORK_ROOT_DIR / wrk.dir_name()
+        work_dir_name = wrk.dir_name()
+        work_dir_path = WORK_DIRS_LOCATION / work_dir_name
         if os.path.exists(work_dir_path) and not args.clobber:
             print(f'Not overwriting existing work dir: {work_dir_path}')
             continue
@@ -120,16 +127,46 @@ def main():
             print('\nconfig-dataset.yaml parameters:')
             config_dat_yaml = yaml.safe_dump(config_dat, default_flow_style=False, sort_keys=False)
             print(indent(config_dat_yaml, '  '))
-            ok = input(f'Create the above work dir? (ENTER or "y" for yes, anything else for no): ')
+            ok = input(f'Set up {work_dir_name} work dir? (ENTER or "y" for yes, anything else for no): ')
         else:
             ok = ''
         if ok in ['', 'y']:
             if not os.path.exists(work_dir_path):
                 os.makedirs(work_dir_path)
-            filepath = work_dir_path / 'config-datasets.yaml'
-            with open(filepath, 'w') as f:
+
+            # Create datasets config file in the work dir
+            outfile = work_dir_path / 'config-datasets.yaml'
+            with open(outfile, 'w') as f:
                 f.write(config_dat_yaml)
-            print(f'Created work dir: {work_dir_path}')
+
+            # Copy publisher config file to work dir
+            filename = args.esgcet_config
+            esgcet_dir = CONFIG_FILES_DIR / 'esgcet_files'
+            shutil.copy( esgcet_dir / filename, work_dir_path / filename)
+
+            # Create script to sync work dir to ESGF server
+            server = config_wrk['server']
+            user = server['user']
+            hostname = server['hostname']
+            work_dir_path_on_server = Path(server['work_dirs_location'])
+            script_filename = 'sync_to_server.sh'
+            script_contents = dedent(f'''\
+                ssh {user}@{hostname} "mkdir -p {work_dir_path_on_server / work_dir_name}"
+                rsync -tpur ../{work_dir_name} {user}@{hostname}:{work_dir_path_on_server} --exclude {script_filename}
+                ''')
+            outfile = work_dir_path / script_filename
+            with open(outfile, 'w') as f:
+                f.write(script_contents)
+            # Set script to have user execute permission
+            permissions = os.stat(outfile).st_mode
+            new_permissions = permissions | stat.S_IXUSR
+            os.chmod(outfile, new_permissions)
+
+            print(f'{work_dir_name} work dir is ready: {work_dir_path}')
+
+        else:
+            print(f'Skipping {work_dir_name} work dir creation')
+
 
 
 if __name__ == '__main__':

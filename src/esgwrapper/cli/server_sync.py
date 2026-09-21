@@ -4,8 +4,8 @@ import argparse
 import os
 
 import sys
-# print('dev version, may not work, may get rid of this')
-# sys.exit()
+print('disabled pending further dev')
+sys.exit()
 
 
 repo = 'esgwrapper'

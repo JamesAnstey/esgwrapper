@@ -29,3 +29,8 @@ separate_work_dirs:
 paths:
   - /space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP7/final
   - /CCCMA_NFS/esg/esg_ng
+
+server:
+  work_dirs_location: /datalocal/home/scrd106/esgf_publishing/cmip7/esgwrapper/work
+  user: scrd106
+  hostname: eccc-esgf2.collab.science.gc.ca
