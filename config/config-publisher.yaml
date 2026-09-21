@@ -3,6 +3,7 @@ mapfile:
   venv:
     - /home/scrd106/rja001/venv/pub_test
     - /home/scrd106/rja001/venv/esgpub
+    - /fs/homeu3/eccc/crd/ords/cccma/rja001/venv/esgwrapper
   commands: [
     'esgmapfile make --project {project} --outdir {mapfile_path} --directory {dataset_path}'
   ]

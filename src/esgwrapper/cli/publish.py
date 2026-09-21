@@ -16,6 +16,7 @@ import sys
 
 from collections import OrderedDict
 from datetime import datetime, UTC
+from pathlib import Path
 from pystac_client import Client
 
 from esgwrapper import (CONFIG_FILES_DIR, DEFAULT_DATASETS_CONFIG_FILE,
@@ -66,6 +67,9 @@ def parse_args():
 
     parser.add_argument('-dry', '--dry-run', action='store_true', default=False,
                         help='show commands but don\'t execute them')
+    parser.add_argument('-v', '--verbose', action='store_true', default=False,
+                       help='show logging info on stdout')
+
     parser.add_argument('-mc', '--mapfile-clobber', action='store_true', default=False,
                         help='overwrite mapfile if it already exists')
 
@@ -127,15 +131,17 @@ def main():
     logger = logging.getLogger('esgwrapper')
     date_run = datetime.now(UTC)
     date_run_str = date_run.strftime('%Y.%m.%d_%H.%M.%S_UTC')
-    logfile = f'esgwrapper_{date_run_str}.log'
-
+    log_dir = Path('logs')
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    logfile = log_dir / f'esgwrapper_{date_run_str}.log'
     # logging.basicConfig(filename=logfile, filemode='w', level=logging.INFO)
+    handlers = [logging.FileHandler(logfile, mode='w')]
+    if args.verbose:
+        handlers.append(logging.StreamHandler(sys.stdout))
     logging.basicConfig(
         level=logging.INFO,
-        handlers=[
-            logging.FileHandler(logfile, mode='w'),
-            logging.StreamHandler(sys.stdout)
-        ]
+        handlers=handlers
     )
 
     date_run_str = date_run.strftime(DATE_FORMAT)

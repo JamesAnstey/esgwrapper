@@ -7,11 +7,11 @@ Load mapfiles from one dir, compare the contents of mapfiles with same filenames
 import os
 from pathlib import Path
 
-path = Path('mapfiles4')
+path = Path('mapfiles_gen')
 
 filenames = os.listdir(path)
 
-path2 = Path('mapfiles_from_server')
+path2 = Path('mapfiles_esgmapfile')
 filenames2 = os.listdir(path2)
 
 for filename in filenames:

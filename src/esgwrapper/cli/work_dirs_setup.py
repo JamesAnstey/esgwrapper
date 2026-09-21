@@ -38,7 +38,13 @@ class work_dir(dict):
             self.exclude.update(exclude)
     def dir_name(self):
         dir_name = self.project
-        dir_name += '_{source_id}_{experiment_id}'.format(**self.inventory)
+        use_attrs = []
+        use_attrs.append('activity_id')
+        use_attrs.append('source_id')
+        use_attrs.append('experiment_id')
+        for attr in use_attrs:
+            if attr in self.inventory:
+                dir_name += f'_{self.inventory[attr]}'
         return dir_name
 
 def parse_args():
