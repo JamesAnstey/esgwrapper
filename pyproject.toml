@@ -29,7 +29,7 @@ Homepage = "https://github.com/JamesAnstey/esgwrapper"
 Issues = "https://github.com/JamesAnstey/esgwrapper/issues"
 
 [project.scripts]
-set_up_work_dir = "esgwrapper.cli.set_up_work_dir:main"
+work_dirs_setup = "esgwrapper.cli.work_dirs_setup:main"
 generate_mapfiles = "esgwrapper.cli.generate_mapfiles:main"
 server_sync = "esgwrapper.cli.server_sync:main"
 publish = "esgwrapper.cli.publish:main"

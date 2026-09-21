@@ -18,7 +18,8 @@ from collections import OrderedDict
 from datetime import datetime, UTC
 from pystac_client import Client
 
-from esgwrapper import CONFIG_FILES
+from esgwrapper import (CONFIG_FILES_DIR, DEFAULT_DATASETS_CONFIG_FILE,
+                        DEFAULT_DATASETS_FILE, DEFAULT_INVENTORY_FILE)
 from esgwrapper.utils.commands import (check_env, exec_cmds, log_cmds)
 from esgwrapper.utils.tools import (load_config_file,
                                     find_datasets, get_unique_param_values, match_params,
@@ -29,10 +30,6 @@ from esgwrapper.utils.esgfsearch import search, show_params, parse_file_size_str
 ##############################################################################
 
 DATE_FORMAT = '%d %b %Y, %H:%M:%S UTC'
-
-DEFAULT_DATASETS_FILE = 'datasets.json'
-DEFAULT_INVENTORY_FILE = 'inventory.json'
-
 QC_REPORTS_DIR = 'ccreport'
 
 
@@ -42,7 +39,7 @@ def parse_args():
         description='Publish CCCma datasets to ESGF'
         )
 
-    parser.add_argument('-c', '--config', type=str, default='config-datasets.yaml',
+    parser.add_argument('-c', '--config', type=str, default=DEFAULT_DATASETS_CONFIG_FILE,
                         help='name of config file containing datasets to publish, default: %(default)s')
 
     # Define different publishing actions as input flags
@@ -132,10 +129,6 @@ def main():
     date_run_str = date_run.strftime('%Y.%m.%d_%H.%M.%S_UTC')
     logfile = f'esgwrapper_{date_run_str}.log'
 
-
-    logfile = 'testing.log'
-
-
     # logging.basicConfig(filename=logfile, filemode='w', level=logging.INFO)
     logging.basicConfig(
         level=logging.INFO,
@@ -145,7 +138,7 @@ def main():
         ]
     )
 
-    date_run_str = date_run.strftime('%b %d %Y, %H:%M:%S UTC')
+    date_run_str = date_run.strftime(DATE_FORMAT)
     logger.info(f' Starting publish.py at {date_run_str}')
 
     get_size = True
@@ -154,7 +147,8 @@ def main():
     config_dat = load_config_file(args.config)
     project = config_dat['project']
 
-    config_pub = load_config_file(CONFIG_FILES / 'config-publisher.yaml')
+    # Load publisher configuration settings from config file
+    config_pub = load_config_file(CONFIG_FILES_DIR / 'config-publisher.yaml')
     dataset_template = config_pub['DRS'][project]['dataset']
 
     if args.mapfile_clobber:
