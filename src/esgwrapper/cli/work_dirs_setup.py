@@ -128,10 +128,10 @@ def main():
             print(f'\nNot overwriting existing work dir: {work_dir_path}')
             continue
 
+        config_dat_yaml = yaml.safe_dump(config_dat, default_flow_style=False, sort_keys=False)
         if prompt_user:
             print(f'\nWork dir path:\n  {work_dir_path}')
             print('\nconfig-dataset.yaml parameters:')
-            config_dat_yaml = yaml.safe_dump(config_dat, default_flow_style=False, sort_keys=False)
             print(indent(config_dat_yaml, '  '))
             ok = input(f'Set up {work_dir_name} work dir? (ENTER or "y" for yes, anything else for no): ')
         else:

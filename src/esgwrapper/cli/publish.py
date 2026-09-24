@@ -373,6 +373,7 @@ def main():
             # index_node = 'west'
 
             keep = []
+            n = len(datasets)
 
             if args.api_method == 1:
                 for dataset_id in datasets:
