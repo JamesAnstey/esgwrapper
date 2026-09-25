@@ -165,14 +165,14 @@ def main():
     else:
         mapfile_clobber = config_pub['mapfile']['clobber']
 
+    if args.max_size:
+        max_size = parse_file_size_str(args.max_size)
+    if args.min_size:
+        min_size = parse_file_size_str(args.min_size)
+
     if args.inventory:
         # Determine datasets to publish, write them to datasets_file
         logger.info(' * Doing inventory of datasets *')
-
-        if args.max_size:
-            max_size = parse_file_size_str(args.max_size)
-        if args.min_size:
-            min_size = parse_file_size_str(args.min_size)
 
         base_paths = config_dat['paths']  # top-level paths to search at
         dataset_paths = config_dat['inventory']  # datasets to search (dir path for some level in the DRS dir tree)
