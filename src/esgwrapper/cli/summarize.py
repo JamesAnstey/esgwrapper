@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 
 from esgwrapper.utils.esgfsearch import file_size_str
 
@@ -24,21 +25,28 @@ def main():
     # Load inventory
     filepath = args.inventory
     with open(filepath, 'r') as f:
-        datasets = json.load(f)['datasets']
-        print('Loaded ' + filepath)
+        d = json.load(f)
+        datasets = d['datasets']
+        header = d['Header']
+        print('Loaded ' + os.path.abspath(filepath))
 
 
     total_size = 0
     for dataset_id, info in datasets.items():
         total_size += info['size (bytes)']
 
-    print(f'Number of datasets: {len(datasets)}')
-    # print(total_size)
+    n = len(datasets)
+    assert n == header['no. of datasets found']
+    print('Inventory finished at: ' + header['date of inventory'])
+    print('Base paths searched:')
+    for path in header['base paths searched']:
+        print(f'  {path}')
+    print('Dataset paths searched:')
+    for path in header['dataset paths searched']:
+        print(f'  {path}')
+    print(f'Number of datasets found: {len(datasets)}')
     print(f'Total size: {file_size_str(total_size)}')
-    
-
-
-
+ 
 
 
 
