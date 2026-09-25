@@ -33,6 +33,7 @@ work_dirs_setup = "esgwrapper.cli.work_dirs_setup:main"
 generate_mapfiles = "esgwrapper.cli.generate_mapfiles:main"
 server_sync = "esgwrapper.cli.server_sync:main"
 publish = "esgwrapper.cli.publish:main"
+summarize = "esgwrapper.cli.summarize:main"
 get_file_stats = "esgwrapper.cli.get_file_stats:main"
 
 #[tool.setuptools]
