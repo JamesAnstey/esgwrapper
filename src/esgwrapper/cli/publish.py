@@ -182,6 +182,7 @@ def main():
 
         datasets = {}
         searched_base_paths = []
+        inventory_time_taken = time.time()
         for base_path in base_paths:
             if os.path.exists(base_path):
                 print('Searching base path: ' + base_path)
@@ -206,12 +207,17 @@ def main():
             print('Unique parameter values:')
             for p in dataset_parameters:
                 print(f'  {p} : ' + ', '.join(param_unique_values[p]))
+        total_size = sum([info['size (bytes)'] for info in datasets.values()])
+        inventory_time_taken = time.time() - inventory_time_taken
         out = OrderedDict({
             'Header' : {
                 'date of inventory': datetime.now(UTC).strftime(DATE_FORMAT),
+                'time taken (s)': inventory_time_taken,
                 'base paths searched': searched_base_paths,
                 'dataset paths searched': dataset_paths,
                 'no. of datasets found': len(datasets),
+                'total size (bytes)': total_size,
+                'total size (human readable)': file_size_str(total_size),
                 'unique parameter values': param_unique_values,
         },
             'datasets' : datasets

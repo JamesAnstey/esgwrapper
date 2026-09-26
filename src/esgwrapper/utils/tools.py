@@ -143,6 +143,8 @@ def _check_dataset_years(project: str, dataset_files: list[str], params: dict) -
     accurately represents the times in the file (CMOR and the QC checker should handle that).
     '''
     check = {}
+    if len(dataset_files) == 0:
+        return False
     if project == 'cmip7':
         if params['frequency'] == 'fx':
             # For fixed fields (with no time dimension), this check is irrelevant
@@ -151,7 +153,7 @@ def _check_dataset_years(project: str, dataset_files: list[str], params: dict) -
             year_ranges = _get_file_times(project, dataset_files)
             if not _validate_year_ranges(year_ranges):
                 # Failure here indicates the dataset years are not contiguous, i.e. there are time gaps.
-                logger.info(f'  REJECTED: dataset has year gaps')
+                logger.info(f'  dataset has year gaps')
                 return False
 
             # Get info from CVs about time range of the experiment
@@ -167,18 +169,18 @@ def _check_dataset_years(project: str, dataset_files: list[str], params: dict) -
                 dt_start = cv_info.start_timestamp
                 check.append(dataset_start_year == dt_start.year)
                 if not check[-1]:
-                    logger.info(f'  REJECTED: dataset starts in year {dataset_start_year}, '
+                    logger.info(f'  dataset starts in year {dataset_start_year}, '
                                 f'but should start in year={dt_start.year}')
             if cv_info.end_timestamp:
                 dt_end = cv_info.end_timestamp
                 check.append(dataset_end_year == dt_end.year)
                 if not check[-1]:
-                    logger.info(f'  REJECTED: dataset ends in year {dataset_end_year}, '
+                    logger.info(f'  dataset ends in year {dataset_end_year}, '
                                 f'but should end in year={dt_end.year}')
             if cv_info.min_number_yrs_per_sim:
                 check.append(dataset_total_years >= cv_info.min_number_yrs_per_sim)
                 if not check[-1]:
-                    logger.info(f'  REJECTED: dataset has {dataset_total_years} years, '
+                    logger.info(f'  dataset has {dataset_total_years} years, '
                                 f'minimum number of years={cv_info.min_number_yrs_per_sim}')
             if len(check) == 0:
                 raise ValueError(f'No dataset time range checks were applied, is the needed info in the CVs?')
@@ -210,6 +212,7 @@ def find_datasets(project: str,
         relpath = os.path.relpath(dirpath, base_path)
         param_values_from_path =  relpath.split(path_sep)
         params = {p:v for p,v in zip(path_params, param_values_from_path)}
+        reject_dataset = False
         if len(param_values_from_path) == path_depth:
             dataset_id = dataset_template.format(**params)
             logger.info(f' Found dataset: {dataset_id}')
@@ -225,30 +228,33 @@ def find_datasets(project: str,
             dataset_files = sorted(dataset_files, key=str.lower)
             if len(invalid_files) > 0:
                 # If any invalid files were found in the dataset dir, reject it
-                logger.info(f' REJECTED: invalid files were found in dataset dir')
-                continue
+                logger.info(f' invalid files were found in dataset dir')
+                reject_dataset = True
             if len(dataset_files) == 0:
-                logger.info(f' REJECTED: No valid dataset files were found')
-                continue
+                logger.info(f' no valid dataset files were found')
+                reject_dataset = True
             if not _check_dataset_years(project, dataset_files, params):
                 # If dataset does not contain all expected years, reject it
-                logger.info(f' REJECTED: failed time range checks (see above for why)')
-                continue
+                logger.info(f' failed time range checks (see above for why)')
+                reject_dataset = True
 
-            datasets[dataset_id] = {
-                'path' : dirpath, 'params' : params
-            }
-            datasets[dataset_id].update({
-                'no. of files' : len(dataset_files), 'filenames' : dataset_files,
-            })
-            if get_size:
-                size = 0
-                for filename in dataset_files:
-                    size += os.stat(os.path.join(dirpath, filename)).st_size
+            if reject_dataset:
+                logger.info(f'   REJECTED: {dataset_id}')
+            else:
+                logger.info(f'   ACCEPTED: {dataset_id}')
+                datasets[dataset_id] = {
+                    'path' : dirpath, 'params' : params
+                }
                 datasets[dataset_id].update({
-                    # 'size' : size, 'size_str' : file_size_str(size)
-                    'size (bytes)' : size, 'size (human readable)' : file_size_str(size)
+                    'no. of files' : len(dataset_files), 'filenames' : dataset_files,
                 })
+                if get_size:
+                    size = 0
+                    for filename in dataset_files:
+                        size += os.stat(os.path.join(dirpath, filename)).st_size
+                    datasets[dataset_id].update({
+                        'size (bytes)' : size, 'size (human readable)' : file_size_str(size)
+                    })
 
     return datasets
 
