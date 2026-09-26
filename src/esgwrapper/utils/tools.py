@@ -194,7 +194,6 @@ def find_datasets(project: str,
                   dataset_template: str,
                   path_template: str,
                   file_template: str,
-                  get_size: bool=False,
                   ) -> dict:
     '''
     Walk directory to find datasets and gather info about them.
@@ -248,13 +247,12 @@ def find_datasets(project: str,
                 datasets[dataset_id].update({
                     'no. of files' : len(dataset_files), 'filenames' : dataset_files,
                 })
-                if get_size:
-                    size = 0
-                    for filename in dataset_files:
-                        size += os.stat(os.path.join(dirpath, filename)).st_size
-                    datasets[dataset_id].update({
-                        'size (bytes)' : size, 'size (human readable)' : file_size_str(size)
-                    })
+                size = 0
+                for filename in dataset_files:
+                    size += os.stat(os.path.join(dirpath, filename)).st_size
+                datasets[dataset_id].update({
+                    'size (bytes)' : size, 'size (human readable)' : file_size_str(size)
+                })
 
     return datasets
 

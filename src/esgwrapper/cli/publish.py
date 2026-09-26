@@ -150,8 +150,6 @@ def main():
     logger.info(f' Starting publish.py at {date_run_str}')
     time_taken = time.time()
 
-    get_size = True
-
     # Load dataset configuration settings from config file
     config_dat = load_config_file(args.config)
     project = config_dat['project']
@@ -193,8 +191,7 @@ def main():
                 print('Searching path (relative to base path): ' + dataset_path)
                 d = find_datasets(project,
                                   base_path, dataset_path,
-                                  dataset_template, path_template, file_template,
-                                  get_size=get_size)
+                                  dataset_template, path_template, file_template)
                 datasets.update(d)
                 del d
 
@@ -300,16 +297,15 @@ def main():
             print(f'  --> excluded {n-len(datasets)} datasets')
 
         # Ensure datasets with size zero and/or no files are discarded
-        if get_size:
-            exclude = set()
-            for dataset_id, info in datasets.items():
-                if info['size (bytes)'] == 0 or info['no. of files'] == 0:
-                    exclude.add(dataset_id)
-            if len(exclude) > 0:
-                n = len(datasets)
-                keep = [s for s in datasets if s not in exclude]
-                datasets = {s: datasets[s] for s in keep}
-                print(f'  --> excluded {n-len(datasets)} datasets that had zero size and/or no valid files')
+        exclude = set()
+        for dataset_id, info in datasets.items():
+            if info['size (bytes)'] == 0 or info['no. of files'] == 0:
+                exclude.add(dataset_id)
+        if len(exclude) > 0:
+            n = len(datasets)
+            keep = [s for s in datasets if s not in exclude]
+            datasets = {s: datasets[s] for s in keep}
+            print(f'  --> excluded {n-len(datasets)} datasets that had zero size and/or no valid files')
 
         # Filter based on other criteria
         if do_validation:
@@ -479,19 +475,19 @@ def main():
         },
             'datasets' : datasets
         })
-        if get_size:
-            # Report total size of datasets
-            size = 0
-            for dataset_id, info in datasets.items():
-                size += info['size (bytes)']
-            total_size = file_size_str(size)
-            out['Header'].update({
-                'total size (all datasets)': total_size
-            })
-            msg = f'Total size of publishable datasets: {total_size}'
-            if args.inventory:
-                msg = f'Total size of inventoried datasets: {total_size}'
-            print(msg)
+        # Report total size of datasets
+        size = 0
+        for dataset_id, info in datasets.items():
+            size += info['size (bytes)']
+        total_size = file_size_str(size)
+        out['Header'].update({
+            'total size (all datasets)': total_size
+        })
+        msg = f'Total size of publishable datasets: {total_size}'
+        if args.inventory:
+            msg = f'Total size of inventoried datasets: {total_size}'
+        print(msg)
+
         filepath = datasets_file
         with open(filepath, 'w') as f:
             json.dump(out, f, indent=4)
