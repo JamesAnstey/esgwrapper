@@ -4,6 +4,7 @@ import json
 import logging
 import numpy as np
 import os
+import stat
 import yaml
 
 from collections import OrderedDict, defaultdict
@@ -52,6 +53,15 @@ def match_params(params, reference):
         matches[p] = params[p] in values
 
     return matches
+
+def _validate_dir_permissions(dirpath):
+    file_stat = os.stat(dirpath)
+    mode = file_stat.st_mode
+    check = []
+    check.append(bool(mode & stat.S_IRUSR))  # owner can read
+    check.append(bool(mode & stat.S_IRGRP))  # group can read
+    check.append(bool(mode & stat.S_IROTH))  # whole world can read
+    return all(check)
 
 def _validate_dataset_path(path: str, params: dict, path_template: str,
                            validator: DrsValidator = None,
@@ -258,8 +268,13 @@ def find_datasets(project: str,
         # inventory significantly, and there are still some checks in place when it's not used.        
         validator = None
 
+    check_dir_permissions = True
+
     path = os.path.join(base_path, dataset_path)
     for (dirpath, dirnames, filenames) in os.walk(path, followlinks=False):
+        if check_dir_permissions:
+            if not _validate_dir_permissions(dirpath):
+                raise PermissionError(f'Incorrect permissions for {dirpath}')
         relpath = os.path.relpath(dirpath, base_path)
         param_values_from_path =  relpath.split(path_sep)
         params = {p:v for p,v in zip(path_params, param_values_from_path)}
