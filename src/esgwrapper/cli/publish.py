@@ -205,6 +205,7 @@ def main():
             for p in dataset_parameters:
                 print(f'  {p} : ' + ', '.join(param_unique_values[p]))
         total_size = sum([info['size (bytes)'] for info in datasets.values()])
+        total_size_str = file_size_str(total_size)
         inventory_time_taken = time.time() - inventory_time_taken
         out = OrderedDict({
             'Header' : {
@@ -214,12 +215,12 @@ def main():
                 'dataset paths searched': dataset_paths,
                 'no. of datasets found': len(datasets),
                 'total size (bytes)': total_size,
-                'total size (human readable)': file_size_str(total_size),
+                'total size (human readable)': total_size_str,
                 'unique parameter values': param_unique_values,
         },
             'datasets' : datasets
         })
-        print(f'Found {len(datasets)} datasets')
+        print(f'Found {len(datasets)} datasets, total size {total_size_str}')
         filepath = inventory_file
         with open(filepath, 'w') as f:
             json.dump(out, f, indent=4)

@@ -4,20 +4,21 @@ import json
 import logging
 import numpy as np
 import os
-import pathlib
 import yaml
 
 from collections import OrderedDict, defaultdict
 from datetime import datetime
+from pathlib import Path
 
 import esgvoc.api as ev
+from esgvoc.apps.drs.validator import DrsValidator
 
 from esgwrapper.utils.esgfsearch import file_size_str
 
 logger = logging.getLogger('esgwrapper')
 
 
-def load_config_file(config_file: str | pathlib.PosixPath) -> dict:
+def load_config_file(config_file: str | Path) -> dict:
     '''
     Load yaml configuration file and return contents as dict.
     '''
@@ -52,7 +53,38 @@ def match_params(params, reference):
 
     return matches
 
-def _validate_dataset_filename(project: str, filename: str, params: dict, file_template: str) -> bool:
+def _validate_dataset_path(path: str, params: dict, path_template: str,
+                           validator: DrsValidator = None,
+                           ) -> bool:
+    '''
+    Check that directory path is valid for a dataset.
+    Input variable "path" is eexpected to be only the dataset path, it should
+    not contain other leading path components.
+    '''
+    check = []
+    path = os.path.normpath(path)
+
+    # Check directory path structure follows the DRS by substituing its parameter values 
+    # (which are passed to the function in the "params" dict) into the path template and
+    # comparing that to the actual path.
+    dataset_path = path_template.format(**params)
+    check.append(path == dataset_path)
+
+    if validator:
+        # Check dataset path using the esgvoc filename validator. This checks against the
+        # official project CVs. Note, esgvoc's validate_directory function does not
+        # automatically strip leading path elements, so it's necessary to pass it
+        # dataset_path, rather than the full path.
+        # validation_report = validator.validate_directory(dataset_path)
+        validation_report = validator.validate_directory(path)
+        check.append(validation_report.validated)
+
+    return all(check)
+
+def _validate_dataset_filename(project: str,
+                               filename: str, params: dict, file_template: str,
+                               validator: DrsValidator = None,
+                               ) -> bool:
     '''
     Check that filename is valid for a dataset.
     '''
@@ -68,7 +100,9 @@ def _validate_dataset_filename(project: str, filename: str, params: dict, file_t
     # (i.e., the rsync is still in progress)
     check.append(not filename.startswith('.'))
 
-    # Check filename follows the DRS
+    # Check filename follows the DRS by substituing its parameter values (which are passed
+    # to the function in the "params" dict) into the filename template and comparing that
+    # to the actual filename.
     if project == 'cmip7':
         assert file_template_noext.endswith('_{timeRangeDD}'), \
             f'Unexpected file_template for {project}: {file_template}'
@@ -80,6 +114,14 @@ def _validate_dataset_filename(project: str, filename: str, params: dict, file_t
     else:
         raise ValueError(f'Where in the filename is the time string for {project}? Received: {file_template}')
     check.append(filename_notime == file_template_notime.format(**params))
+
+    if validator:
+        # Check filename using the esgvoc filename validator. This checks against the official project CVs.
+        # (Hence it should be sufficient on its own, but since I added this after already implementing the
+        # checks above I'll leave both those and the esgvoc check in here for now.)
+        # Note: validation_report.errors lists any errors found, validation_report.warnings lists warnings
+        validation_report = validator.validate_file_name(filename)
+        check.append(validation_report.validated)
 
     return all(check)
 
@@ -206,20 +248,34 @@ def find_datasets(project: str,
 
     datasets = {}
 
+    use_esgvoc_validator = False
+    if use_esgvoc_validator:
+        # To use esgvoc DRS validation (checking file and dir names), pass this validator
+        # object to the checking functions.
+        validator = DrsValidator(project_id=project)
+    else:
+        # To not use the esgvoc validator, set validator=None. Using it can slow down the
+        # inventory significantly, and there are still some checks in place when it's not used.        
+        validator = None
+
     path = os.path.join(base_path, dataset_path)
     for (dirpath, dirnames, filenames) in os.walk(path, followlinks=False):
         relpath = os.path.relpath(dirpath, base_path)
         param_values_from_path =  relpath.split(path_sep)
         params = {p:v for p,v in zip(path_params, param_values_from_path)}
-        reject_dataset = False
         if len(param_values_from_path) == path_depth:
+            # Validate dataset path
+            if not _validate_dataset_path(relpath, params, path_template, validator):
+                logger.info(f'   REJECTED: {relpath}')
+                continue
+            reject_dataset = False
             dataset_id = dataset_template.format(**params)
             logger.info(f' Found dataset: {dataset_id}')
             logger.info(f' path: {dirpath}')
             dataset_files = set()
             invalid_files = set()
             for filename in filenames:
-                if _validate_dataset_filename(project, filename, params, file_template):
+                if _validate_dataset_filename(project, filename, params, file_template, validator):
                     dataset_files.add(filename)
                 else:
                     invalid_files.add(filename)
