@@ -17,13 +17,22 @@ from esgwrapper.utils.esgfsearch import file_size_str
 
 # os.system('publish -i')
 cmd = 'publish -i'
+
+# result = subprocess.Popen(
+#     cmd.split(),
+#     stdout=subprocess.PIPE,
+#     text=True
+# )
+# for line in result.stdout:
+#     print(line.strip())
+
 result = subprocess.Popen(
     cmd.split(),
-    stdout=subprocess.PIPE,
-    text=True
+    stdout=sys.stdout,
+    stderr=sys.stderr,
+    text=True,
 )
-for line in result.stdout:
-    print(line.strip())
+result.communicate()
 
 config_dat = load_config_file('config-datasets.yaml')
 
