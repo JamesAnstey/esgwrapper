@@ -231,14 +231,22 @@ def _check_dataset_years(project: str, dataset_files: list[str], params: dict) -
             dataset_total_years = dataset_end_year - dataset_start_year + 1
             check = []
             if cv_info.start_timestamp:
+                # Check that dataset begins in the start year specified in the CVs.
                 dt_start = cv_info.start_timestamp
                 check.append(dataset_start_year == dt_start.year)
                 if not check[-1]:
                     logger.info(f' dataset starts in year {dataset_start_year}, '
                                 f'but should start in year={dt_start.year}')
             if cv_info.end_timestamp:
+                # Check that dataset ends in the end year specified in the CVs, or ends in the
+                # year following that.
+                #
+                # The second case is allowed because times in a file possibly can include the 
+                # first time of the calendar year following the end year of an experiment, for example:
+                #   vas_tpt-h10m-hxy-u_3hr_glb_g150_CanESM6-0-MR_historical_r12i1p1f1_202101010300-202201010000.nc
+                # where the CMIP7 historical experiment ends at the end of 2021.
                 dt_end = cv_info.end_timestamp
-                check.append(dataset_end_year == dt_end.year)
+                check.append(dataset_end_year == dt_end.year or dataset_end_year == dt_end.year + 1)
                 if not check[-1]:
                     logger.info(f' dataset ends in year {dataset_end_year}, '
                                 f'but should end in year={dt_end.year}')
