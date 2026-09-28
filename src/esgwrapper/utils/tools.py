@@ -272,16 +272,20 @@ def find_datasets(project: str,
 
     path = os.path.join(base_path, dataset_path)
     for (dirpath, dirnames, filenames) in os.walk(path, followlinks=False):
+        # print(dirpath, dirnames, filenames)
         if check_dir_permissions:
             if not _validate_dir_permissions(dirpath):
-                raise PermissionError(f'Incorrect permissions for {dirpath}')
+                # If permissions are invalid, reject this path and ignore all dirs under it
+                logger.info(f' * REJECTED * wrong permissions: {dirpath}')
+                dirnames[:] = []
+                continue
         relpath = os.path.relpath(dirpath, base_path)
         param_values_from_path =  relpath.split(path_sep)
         params = {p:v for p,v in zip(path_params, param_values_from_path)}
         if len(param_values_from_path) == path_depth:
             # Validate dataset path
             if not _validate_dataset_path(relpath, params, path_template, validator):
-                logger.info(f'   REJECTED: {relpath}')
+                logger.info(f' * REJECTED * invalid path: {relpath}')
                 continue
             reject_dataset = False
             dataset_id = dataset_template.format(**params)
@@ -309,9 +313,9 @@ def find_datasets(project: str,
                 reject_dataset = True
 
             if reject_dataset:
-                logger.info(f'   REJECTED: {dataset_id}')
+                logger.info(f' * REJECTED * {dataset_id}')
             else:
-                logger.info(f'   ACCEPTED: {dataset_id}')
+                logger.info(f' * ACCEPTED * {dataset_id}')
                 datasets[dataset_id] = {
                     'path' : dirpath, 'params' : params
                 }
