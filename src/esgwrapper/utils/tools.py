@@ -151,20 +151,33 @@ def _validate_year_ranges(year_ranges: np.array) -> bool:
     '''
     Check that dataset years are contiguous, based on the start/stop times.
 
-    year_ranges is an array like the time_bnds in a netcdf file, example:
+    year_ranges is an array like the time_bnds in a netcdf file, for example:
         array([[6500., 6600.],
                [6601., 6700.],
                [6701., 6800.]])
+    In the above example each file starts with a new calendar year. But we also
+    allow for this case:
+        array([[1850., 1861.],
+               [1861., 1871.],
+               [1871., 1881.]])
+    where the end year of a file is the same as the start year of the next one.
+    The reason is that some datasets have files like:
+        vas_tpt-h10m-hxy-u_6hr_glb_g120_CanESM5-1_1pctCO2_r1i1p2f1_185001010600-186101010000.nc
+        vas_tpt-h10m-hxy-u_6hr_glb_g120_CanESM5-1_1pctCO2_r1i1p2f1_186101010600-187101010000.nc
+        vas_tpt-h10m-hxy-u_6hr_glb_g120_CanESM5-1_1pctCO2_r1i1p2f1_187101010600-188101010000.nc
+    where the last time of a file is the first time of the next calendar year.
     '''
-    # Check sorting that consecuritve file start & stop times are at least 1 year apart
+    # Check that consecutive files' start & stop times are at least 1 year apart.
     assert np.all(np.diff(year_ranges, axis=0)) > 0, \
         f'Unexpected order of start/stop file times: {year_ranges}'
-    # Check that within each file the start time is the same year or later than the stop time
+    # Check that within each time range the start time is the same year or later than the stop time.
     assert np.all(np.diff(year_ranges, axis=1)) >= 0, \
-        f'Unexpected time range within files: {year_ranges}'
-    # Check that each stop time is a year before the next start time
+        f'Unexpected time range within file times: {year_ranges}'
+    # Check that each stop time is not more than a year before the next start time.
     year_gaps = year_ranges[1:,0] - year_ranges[:-1,1]
-    return bool(np.all(year_gaps == 1))
+    assert bool(np.all(year_gaps >= 0)), \
+        f'Found negative year gaps in file times: {year_ranges}'
+    return bool(np.all(year_gaps <= 1))
 
 def _get_file_times(project: str, dataset_files: list[str]) -> np.array:
     year_ranges = np.zeros((len(dataset_files),2))
@@ -205,7 +218,7 @@ def _check_dataset_years(project: str, dataset_files: list[str], params: dict) -
             year_ranges = _get_file_times(project, dataset_files)
             if not _validate_year_ranges(year_ranges):
                 # Failure here indicates the dataset years are not contiguous, i.e. there are time gaps.
-                logger.info(f'  dataset has year gaps')
+                logger.info(f' dataset has year gaps')
                 return False
 
             # Get info from CVs about time range of the experiment
@@ -221,18 +234,18 @@ def _check_dataset_years(project: str, dataset_files: list[str], params: dict) -
                 dt_start = cv_info.start_timestamp
                 check.append(dataset_start_year == dt_start.year)
                 if not check[-1]:
-                    logger.info(f'  dataset starts in year {dataset_start_year}, '
+                    logger.info(f' dataset starts in year {dataset_start_year}, '
                                 f'but should start in year={dt_start.year}')
             if cv_info.end_timestamp:
                 dt_end = cv_info.end_timestamp
                 check.append(dataset_end_year == dt_end.year)
                 if not check[-1]:
-                    logger.info(f'  dataset ends in year {dataset_end_year}, '
+                    logger.info(f' dataset ends in year {dataset_end_year}, '
                                 f'but should end in year={dt_end.year}')
             if cv_info.min_number_yrs_per_sim:
                 check.append(dataset_total_years >= cv_info.min_number_yrs_per_sim)
                 if not check[-1]:
-                    logger.info(f'  dataset has {dataset_total_years} years, '
+                    logger.info(f' dataset has {dataset_total_years} years, '
                                 f'minimum number of years={cv_info.min_number_yrs_per_sim}')
             if len(check) == 0:
                 raise ValueError(f'No dataset time range checks were applied, is the needed info in the CVs?')
