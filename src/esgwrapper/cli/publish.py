@@ -220,11 +220,12 @@ def main():
         },
             'datasets' : datasets
         })
-        print(f'Found {len(datasets)} datasets, total size {total_size_str}')
+        print(f'Total size of datasets: {total_size} bytes, {total_size_str}')
         filepath = inventory_file
         with open(filepath, 'w') as f:
             json.dump(out, f, indent=4)
             print(f'Wrote {filepath} with {len(datasets)} datasets')
+        logger.info(f' * Finished inventory *')
 
 
     ##############################################################################
@@ -493,7 +494,7 @@ def main():
         with open(filepath, 'w') as f:
             json.dump(out, f, indent=4)
             print(f'Wrote {filepath} with {len(datasets)} datasets')
-
+        logger.info(f' * Finished finding publishable datasets *')
 
     # config_dat is not used after this point since all info on datasets to be published
     # should be in the output json file datasets_file.
