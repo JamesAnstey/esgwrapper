@@ -97,7 +97,7 @@ def parse_args():
     parser.add_argument('-r', '--retries', type=int, default=0,
                         help='number of times to retry publishing command if it fails (default: 0)')
     parser.add_argument('-s', '--start', type=int,
-                        help='index to begin with in list of datasets (0 = first dataset)')
+                        help='index to begin with in list of datasets (1 = first dataset)')
     parser.add_argument('-n', '--number', type=int,
                         help='number of datasets to use from list of datasets (default: all)')
     parser.add_argument('-id', '--dataset-ids', type=str,
@@ -522,8 +522,11 @@ def main():
             dataset_ids = [s.strip() for s in dataset_ids]
 
         if args.start:
-            dataset_ids = dataset_ids[args.start:]
+            assert args.start >= 1, f'Start number (-s) must be 1 or higher'
+            dataset_index = args.start - 1
+            dataset_ids = dataset_ids[dataset_index:]
         if args.number:
+            assert args.number >=1, f'Number of datasets (-n) must be 1 or higher'
             dataset_ids = dataset_ids[:args.number]
 
         datasets = OrderedDict({s : datasets[s] for s in dataset_ids})
