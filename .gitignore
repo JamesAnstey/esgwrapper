@@ -6,5 +6,6 @@ inventory.json
 .tmp_esgf_search
 work
 *.xlsx
+*.csv
 __pycache__
 esgwrapper.egg-info

@@ -210,6 +210,7 @@ def main():
         out = OrderedDict({
             'Header' : {
                 'date of inventory': datetime.now(UTC).strftime(DATE_FORMAT),
+                'logfile': logfile,
                 'time taken (s)': inventory_time_taken,
                 'base paths searched': searched_base_paths,
                 'dataset paths searched': dataset_paths,
@@ -471,6 +472,7 @@ def main():
         out = OrderedDict({
             'Header' : {
                 'date of search' : datetime.now(UTC).strftime(DATE_FORMAT),
+                'logfile': logfile,
                 'inventory file' : inventory_file,
                 'no. of datasets retained' : len(datasets),
                 'unique parameter values' : param_unique_values,
