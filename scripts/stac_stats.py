@@ -1,0 +1,125 @@
+#!/usr/bin/env python
+'''
+Load dict returned by stac search and summarie contents
+'''
+
+import argparse
+import json
+
+from collections import defaultdict, OrderedDict
+from textwrap import dedent
+
+from esgwrapper.utils.esgfsearch import file_size_str
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Summarize STAC search results'
+    )
+
+    parser.add_argument('input', type=str,
+                        help='json file with search results')
+    
+    parser.add_argument('-m', '--model', type=str,
+                        help='models (source_id) to count, comma-separated list')
+    parser.add_argument('-v', '--validation', type=str,
+                        help='json file with variable validation statuses to check against published variables')
+    
+
+    return parser.parse_args()
+
+def cmip7_compound_name_from_stac_dataset(info):
+    template = '{realm}.{variable_id}.{branding_suffix}.{frequency}.{region}'
+    params = {
+        'realm': info['properties']['cmip7:realm'][0],
+        'variable_id': info['properties']['cmip7:variable_id'],
+        'branding_suffix': info['properties']['cmip7:variable_branding_suffix'],
+        'frequency': info['properties']['cmip7:frequency'],
+        'region': info['properties']['cmip7:region'],
+    }
+    return template.format(**params)
+
+def main():
+    args = parse_args()
+
+    if args.model:
+        models = args.model.split(',')
+        model_stats = {model: {'total size': 0, 'no. datasets': 0} for model in models}
+    else:
+        model_stats = {}
+
+    with open(args.input) as f:
+        d = json.load(f)
+        datasets = d['datasets']
+
+    n = len(datasets)
+    total_size = 0
+    for dataset_id, info in datasets.items():
+        total_size += info['properties']['size']
+
+        model = info['properties']['cmip7:source_id']
+        if model in model_stats:
+            model_stats[model]['total size'] += info['properties']['size']
+            model_stats[model]['no. datasets'] += 1
+
+    total_size_str = file_size_str(total_size)
+    msg = dedent(f'''
+    Number of datasets: {n}
+    Total size: {total_size} bytes, {total_size_str}
+    ''')
+    print(msg)
+
+    if len(model_stats) > 0:
+        for model, stats in model_stats.items():
+            total_size = stats['total size']
+            total_size_str = file_size_str(total_size)
+            n = stats['no. datasets']
+            msg = dedent(f'''\
+                {model}:
+                    Number of datasets: {n}
+                    Total size: {total_size} bytes, {total_size_str}
+                ''')
+            print(msg)
+
+    if args.validation:
+        published = defaultdict(list)
+        with open(args.validation) as f:
+            d = json.load(f)
+            variable_status = d['model']
+        for dataset_id, info in datasets.items():
+            var_name = cmip7_compound_name_from_stac_dataset(info)
+            model = info['properties']['cmip7:source_id']
+            var_info = variable_status[model][var_name]  # if variable is published, it must have an entry
+            if var_info['aggregate_status'] != 'approved':
+                published[var_name].append(dataset_id)
+        if len(published) == 0:
+            print(f'All published variables are approved!')
+        else:
+            retract_vars = OrderedDict()
+            retract_datasets = []
+            for var_name in sorted(published.keys(), key=str.lower):
+                dataset_ids = sorted(published[var_name])
+                assert len(dataset_ids) == len(set(dataset_ids))
+                retract_vars[var_name] = dataset_ids
+                retract_datasets += dataset_ids
+            assert len(retract_datasets) == len(set(retract_datasets))
+
+            nd = len(retract_datasets)
+            nv = len(retract_vars)
+            out = OrderedDict({
+                'Header': OrderedDict({
+                    'No. of datasets to retract': nd,
+                    'No. of variables to retract': nv
+                }),
+                'retract': retract_vars
+            })
+            outfile = 'retract_variables.json'
+            with open(outfile, 'w') as f:
+                json.dump(out, f, indent=4)
+                print(f'Wrote {outfile} with {nv} variables for {nd} datasets')
+            outfile = 'retract_datasets.txt'
+            with open(outfile, 'w') as f:
+                f.write('\n'.join(retract_datasets))
+                print(f'Wrote {outfile} with {nd} datasets')
+
+if __name__ == '__main__':
+    main()
