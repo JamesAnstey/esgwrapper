@@ -1,8 +1,7 @@
 mapfiles
 inventory
 tmp
-datasets.json
-inventory.json
+*.json
 .tmp_esgf_search
 work
 *.xlsx
