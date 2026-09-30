@@ -564,7 +564,9 @@ def main():
         k = 0
         for dataset_id, info in datasets.items():
             k += 1
-            logger.info(f' Generating mapfile for dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
+            msg = f'Generating mapfile for dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})'
+            print(f'\n{msg}')
+            logger.info(f' {msg}')
             cmd_args = {
                 'mapfile_path' : os.path.normpath(os.path.join(
                     mapfile_base_path, mapfile_path_template.format(**info['params'])
@@ -582,7 +584,7 @@ def main():
             # Run commands to generate mapfile for this dataset
             cmd_results = exec_cmds(commands, cmd_args, do_cmds)
 
-            if do_cmds or True:
+            if do_cmds:
                 # Write logfile summarizing the results of commands
                 for msg in log_cmds(dataset_id, cmd_results):
                     logger.info(msg)
@@ -618,7 +620,9 @@ def main():
         k = 0
         for dataset_id, info in datasets.items():
             k += 1
-            print(f'\nPublishing dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
+            msg = f'Publishing dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})'
+            print(f'\n{msg}')
+            logger.info(f' {msg}')
 
             # Find mapfile for this dataset
             mapfile_path = os.path.join(mapfile_base_path, mapfile_path_template.format(**info['params']))
