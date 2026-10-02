@@ -7,7 +7,9 @@ python get_validation_statuses.py
 ```
 This queries the validation database and writes csv files with statuses for each model in the current directory.
 It then reads these files and produces `validation_status.json` which contains the approval status and other metadata of all variables for each model.
-(To write `validation_status.json` using existing csv files in the current directory, i.e. without querying the database, invoke with the `-ndb` flag.)
+It requires `postgresql_export.sh` and `download_validation_files.sh` in the current directory.
+
+To write `validation_status.json` using existing csv files in the current directory, i.e. without querying the database, invoke with the `-ndb` flag.
 
 `validation_status.json` can be used by the publishing software to confirm a varibale is approved before publishing.
 Its header has some useful info:

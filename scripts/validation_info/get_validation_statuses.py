@@ -24,11 +24,12 @@ from datetime import datetime, UTC
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Get validation statuses of variables from A4D database'
+        description='Get validation statuses of variables from A4D database and write variable statuses to json file'
     )
 
-    parser.add_argument('-db', '--database', action='store_true',
-                        help='get csv files from validation database')
+    parser.add_argument('-ndb', '--no-database', action='store_true',
+                        help='do not get csv files from validation databases, \
+                             instead use csv files that already exist in the current directory')
 
     return parser.parse_args()
 
@@ -65,7 +66,7 @@ def parse_cmip7_compound_name(var_name: str) -> dict:
 def main():
     args = parse_args()
 
-    if args.database:
+    if not args.no_database:
         get_database_files()
 
     models = ['CanESM5-1', 'CanESM6-0-MR']
