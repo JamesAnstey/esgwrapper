@@ -23,6 +23,9 @@ def parse_args():
     parser.add_argument('index', type=str, choices=esgf_index_nodes,
                         help='ESGF-NG index node to use')
 
+    parser.add_argument('-a', '--all', action='store_true',
+                        help='return whole catalogue')
+
     args = parser.parse_args()
     return args
 
@@ -65,9 +68,9 @@ def main():
         url_endpoint = f"https://discovery.{index}.esgf.io"
         client = Client.open(url_endpoint)
 
-        if index == 'west':
-            # temporary until west api search fixed
-            query = {}
+        if args.all:
+            # Only specify the collection, ignore anything else
+            query = deepcopy(base_query)
         
         print(f'Searching {url_endpoint} for {query}')
         search = client.search(**query)
@@ -80,11 +83,14 @@ def main():
 
         del items, search
 
-        if index == 'west':
+        if args.all:
             break
+
 
     outfile_prefix = 'stac_found'
     # outfile_prefix = 'stac_test'
+    if args.all:
+        outfile_prefix = 'stac_found_all'
 
     # Output txt file listing dataset ids
     outfile = f'{outfile_prefix}_{index}.txt'

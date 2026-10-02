@@ -83,23 +83,29 @@ def main():
             print(msg)
 
     if args.validation:
-        published = defaultdict(list)
+        published_unapproved = defaultdict(list)
         with open(args.validation) as f:
             d = json.load(f)
             variable_status = d['model']
+        other_models = set()
         for dataset_id, info in datasets.items():
             var_name = cmip7_compound_name_from_stac_dataset(info)
             model = info['properties']['cmip7:source_id']
+            if model not in variable_status:
+                # Presumably this is not a CCCma model
+                other_models.add(model)
+                continue
             var_info = variable_status[model][var_name]  # if variable is published, it must have an entry
             if var_info['aggregate_status'] != 'approved':
-                published[var_name].append(dataset_id)
-        if len(published) == 0:
-            print(f'All published variables are approved!')
+                published_unapproved[var_name].append(dataset_id)
+        if len(published_unapproved) == 0:
+            models_checked = ', '.join(sorted(variable_status.keys()))
+            print(f'All published variables are approved!\n  Models checked: {models_checked}')
         else:
             retract_vars = OrderedDict()
             retract_datasets = []
-            for var_name in sorted(published.keys(), key=str.lower):
-                dataset_ids = sorted(published[var_name])
+            for var_name in sorted(published_unapproved.keys(), key=str.lower):
+                dataset_ids = sorted(published_unapproved[var_name])
                 assert len(dataset_ids) == len(set(dataset_ids))
                 retract_vars[var_name] = dataset_ids
                 retract_datasets += dataset_ids
@@ -122,6 +128,9 @@ def main():
             with open(outfile, 'w') as f:
                 f.write('\n'.join(retract_datasets))
                 print(f'Wrote {outfile} with {nd} datasets')
+        if len(other_models) > 0:
+            models_not_checked = ', '.join(sorted(other_models))
+            print(f'These models were found in the search but have no validation status available:\n  {models_not_checked}')
 
 if __name__ == '__main__':
     main()
