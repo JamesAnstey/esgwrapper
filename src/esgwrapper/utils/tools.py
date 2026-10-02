@@ -360,7 +360,73 @@ def get_unique_param_values(datasets, dataset_parameters):
     return param_unique_values
 
 
+def cmip7_compound_name(params):
+   '''
+   Return CMIP7 compound name as defined in the CMIP7 Data Request.
+   This name uniquely identifies a requested variable (i.e., a CMOR variable).
+   '''
+   template = '{realm}.{variable_id}.{branding_suffix}.{frequency}.{region}'
+   return template.format(**params)
+
+
+def cmip7_compound_name_without_realm(params):
+   '''
+   Return CMIP7 compound name as defined in the CMIP7 Data Request, but excluding the realm.
+   This name should uniquely identifies a requested variable (i.e., a CMOR variable) since the realm
+   is not required for uniqueness.
+   '''
+   template = '{variable_id}.{branding_suffix}.{frequency}.{region}'
+   return template.format(**params)
+
+
+def check_a4d_validation_status(datasets, validation_file):
+    '''
+    Check validation status of variables before publishing.
+    Uses validation info from A4D validation database.
+    '''
+    with open(validation_file) as f:
+        variable_status = json.load(f)['model']
+
+    # "realm" is not available from the inventory.
+    # It's not required as part of the unique variable name in CMIP7, so prune it.
+    # Confirm that this doesn't violate the uniqueness assumption.
+    variable_status2 = {model: {} for model in variable_status}
+    for model, vars in variable_status.items():
+        for var_name, var_info in vars.items():
+            var_name2 = cmip7_compound_name_without_realm(var_info)
+            assert var_name.endswith(var_name2)  # double check!
+            assert var_name2 not in variable_status2[model]  # confirm doesn't violate uniqueness
+            variable_status2[model][var_name2] = var_info
+    # Check variable name uniqueness once more... just to be extra sure
+    for model in variable_status:
+        assert len(set(variable_status[model].keys())) == len(set(variable_status2[model].keys()))
+    variable_status = variable_status2
+    del variable_status2
+
+    # Go through datasets and exclude any that are not approved.
+    # Log any rejections.
+    exclude_datasets = []
+    exclude_variables = set()
+    for dataset_id, info in datasets.items():
+        var_name = cmip7_compound_name_without_realm(info['params'])
+        model = info['params']['source_id']
+        var_info = variable_status[model][var_name]  # if variable is published, it must have an entry
+        if var_info['aggregate_status'] != 'approved':
+            logger.info(f' {var_name} not approved for {model}, discarding dataset: {dataset_id}')
+            exclude_datasets.append(dataset_id)
+            exclude_variables.add(cmip7_compound_name(var_info))
+    for dataset_id in exclude_datasets:
+        datasets.pop(dataset_id)
+    msg = f'{len(exclude_variables)} unapproved variables from {len(exclude_datasets)} datasets were excluded'
+    print(f'WARNING: {msg}')
+    logger.info(f' * VALIDATION FAILURE * {msg}')
+
+
 def publication_checks(datasets, validation_file):
+    '''
+    Check CMIP6 Stamp of Approval. Superseded for CMIP7 by check_a4d_validation_status().
+    '''
+    raise Exception('deprecated')
 
     filepath = validation_file
     with open(filepath, 'r') as f:

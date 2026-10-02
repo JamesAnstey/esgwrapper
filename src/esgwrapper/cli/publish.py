@@ -26,7 +26,7 @@ from esgwrapper import (CONFIG_FILES_DIR, DEFAULT_DATASETS_CONFIG_FILE,
 from esgwrapper.utils.commands import (check_env, exec_cmds, log_cmds)
 from esgwrapper.utils.tools import (load_config_file,
                                     find_datasets, get_unique_param_values, match_params,
-                                    publication_checks,
+                                    check_a4d_validation_status,
                                     data_request_checks, get_dreq_validation_file)
 from esgwrapper.utils.esgfsearch import search, show_params, parse_file_size_str, file_size_str
 
@@ -249,7 +249,6 @@ def main():
             # TODO: revise all of this to make these choices less ad-hoc
             search_esgf = False
             check_data_request = False
-            do_validation = False
             search_esgf_ng = True
 
         # Apply filters from the config-datasets file
@@ -313,10 +312,10 @@ def main():
         # Filter based on other criteria
         if do_validation:
             # Check stamp of approval and other validation criteria
-            validation_file = os.path.join(repo_path, 'input/validation_variables.json')
-            datasets = publication_checks(datasets, validation_file)
+            validation_file = CONFIG_FILES_DIR / 'validation_info' / 'validation_status.json'
+            check_a4d_validation_status(datasets, validation_file)
         else:
-            print('WARNING: data validation (Stamp of Approval) filtering is off')
+            print('WARNING: validation filtering is off')
         if check_data_request:
             # Check which datasets are requested in the project's data request, exclude those that aren't
             validation_file = get_dreq_validation_file(project, repo_path)
