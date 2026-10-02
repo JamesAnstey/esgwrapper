@@ -417,9 +417,14 @@ def check_a4d_validation_status(datasets, validation_file):
             exclude_variables.add(cmip7_compound_name(var_info))
     for dataset_id in exclude_datasets:
         datasets.pop(dataset_id)
-    msg = f'{len(exclude_variables)} unapproved variables from {len(exclude_datasets)} datasets were excluded'
-    print(f'WARNING: {msg}')
-    logger.info(f' * VALIDATION FAILURE * {msg}')
+    if len(exclude_variables) == 0:
+        msg = f'All variables are approved'
+        print(f'{msg}')
+        logger.info(f' * VALIDATION SUCCESS * {msg}')
+    else:
+        msg = f'{len(exclude_variables)} unapproved variables from {len(exclude_datasets)} datasets were excluded'
+        print(f'WARNING: {msg}')
+        logger.info(f' * VALIDATION FAILURE * {msg}')
 
 
 def publication_checks(datasets, validation_file):
