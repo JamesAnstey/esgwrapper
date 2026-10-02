@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-Run invnentory on a dir (publish -i) and then compare the size of datasets found to result of du on the dir.
+Run inventory on a dir (publish -i) and then compare the size of datasets found to result of du on the dir.
 Use this to check if inventory is finding as much data as we expect.
 '''
 

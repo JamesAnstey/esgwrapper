@@ -520,11 +520,11 @@ def main():
                 dataset_ids = args.dataset_ids.split(',')
             dataset_ids = [s.strip() for s in dataset_ids]
 
-        if args.start:
+        if args.start is not None:
             assert args.start >= 1, f'Start number (-s) must be 1 or higher'
             dataset_index = args.start - 1
             dataset_ids = dataset_ids[dataset_index:]
-        if args.number:
+        if args.number is not None:
             assert args.number >=1, f'Number of datasets (-n) must be 1 or higher'
             dataset_ids = dataset_ids[:args.number]
 
