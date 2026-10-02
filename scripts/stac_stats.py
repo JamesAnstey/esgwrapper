@@ -9,7 +9,10 @@ import json
 from collections import defaultdict, OrderedDict
 from textwrap import dedent
 
+from esgwrapper import CONFIG_FILES_DIR
 from esgwrapper.utils.esgfsearch import file_size_str
+
+VALIDATION_FILE = CONFIG_FILES_DIR / 'validation_info' / 'validation_status.json'
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -18,12 +21,11 @@ def parse_args():
 
     parser.add_argument('input', type=str,
                         help='json file with search results')
-    
-    parser.add_argument('-m', '--model', type=str,
-                        help='models (source_id) to count, comma-separated list')
-    parser.add_argument('-v', '--validation', type=str,
+
+    parser.add_argument('-m', '--model', action='store_true',
+                        help='display stats by model')
+    parser.add_argument('-v', '--validation', type=str, default=VALIDATION_FILE,
                         help='json file with variable validation statuses to check against published variables')
-    
 
     return parser.parse_args()
 
@@ -41,10 +43,8 @@ def cmip7_compound_name_from_stac_dataset(info):
 def main():
     args = parse_args()
 
-    if args.model:
-        models = args.model.split(',')
-        model_stats = {model: {'total size': 0, 'no. datasets': 0} for model in models}
-    else:
+    get_model_stats = args.model
+    if get_model_stats:
         model_stats = {}
 
     with open(args.input) as f:
@@ -56,8 +56,10 @@ def main():
     for dataset_id, info in datasets.items():
         total_size += info['properties']['size']
 
-        model = info['properties']['cmip7:source_id']
-        if model in model_stats:
+        if get_model_stats:
+            model = info['properties']['cmip7:source_id']
+            if model not in model_stats:
+                model_stats[model] = {'total size': 0, 'no. datasets': 0}
             model_stats[model]['total size'] += info['properties']['size']
             model_stats[model]['no. datasets'] += 1
 
@@ -68,7 +70,7 @@ def main():
     ''')
     print(msg)
 
-    if len(model_stats) > 0:
+    if get_model_stats:
         for model, stats in model_stats.items():
             total_size = stats['total size']
             total_size_str = file_size_str(total_size)

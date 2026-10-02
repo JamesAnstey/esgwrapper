@@ -35,6 +35,7 @@ from esgwrapper.utils.esgfsearch import search, show_params, parse_file_size_str
 DATE_FORMAT = '%d %b %Y, %H:%M:%S UTC'
 QC_REPORTS_DIR = 'ccreport'
 
+VALIDATION_FILE = CONFIG_FILES_DIR / 'validation_info' / 'validation_status.json'
 
 def parse_args():
 
@@ -312,14 +313,13 @@ def main():
         # Filter based on other criteria
         if do_validation:
             # Check stamp of approval and other validation criteria
-            validation_file = CONFIG_FILES_DIR / 'validation_info' / 'validation_status.json'
-            check_a4d_validation_status(datasets, validation_file)
+            check_a4d_validation_status(datasets, VALIDATION_FILE)
         else:
             print('WARNING: validation filtering is off')
         if check_data_request:
             # Check which datasets are requested in the project's data request, exclude those that aren't
-            validation_file = get_dreq_validation_file(project, repo_path)
-            datasets = data_request_checks(datasets, validation_file)
+            dr_validation_file = get_dreq_validation_file(project, repo_path)
+            datasets = data_request_checks(datasets, dr_validation_file)
         else:
             print('WARNING: data request filtering is off')
 
