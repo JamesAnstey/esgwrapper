@@ -83,25 +83,101 @@ def main():
             print(msg)
 
     if args.validation:
+        # Check validation status of published variables
         published_unapproved = defaultdict(list)
+        published_older_version = defaultdict(list)
+        published_newer_version = defaultdict(list)
+
+        # Load validation status json file, which is produced by get_validation_statuses.py
         with open(args.validation) as f:
             d = json.load(f)
+            print(f'Loaded validation statuses from:\n  {args.validation}')
             variable_status = d['model']
+
+        # Loop over datasets found in the stac search
         other_models = set()
         for dataset_id, info in datasets.items():
             var_name = cmip7_compound_name_from_stac_dataset(info)
             model = info['properties']['cmip7:source_id']
             if model not in variable_status:
-                # Presumably this is not a CCCma model
+                # Presumably this is not a CCCma model, since CCCma models should be accounted
+                # for in the validation status json file.
                 other_models.add(model)
                 continue
-            var_info = variable_status[model][var_name]  # if variable is published, it must have an entry
+            # Get validation status for this variable. If variable is published then it must have
+            # been approved in the A4D validation system, hence it must have an entry in the
+            # validation status json file.
+            if var_name not in variable_status[model]:
+                # If a published variable doesn't have an entry in the validation status file then
+                # something somewhere has gone very wrong.
+                raise ValueError(f'\n *** Published variable {var_name} for {model} \
+                                 is not in the validation status table! ***\n')
+            var_info = variable_status[model][var_name]
+
+            # Check if the published variable has an "approved" status recorded in the validation database
             if var_info['aggregate_status'] != 'approved':
                 published_unapproved[var_name].append(dataset_id)
-        if len(published_unapproved) == 0:
-            models_checked = ', '.join(sorted(variable_status.keys()))
-            print(f'All published variables are approved!\n  Models checked: {models_checked}')
+
+            # Check if the published variable has a version identifier (e.g. "v20190429") that agrees
+            # with the one recorded in the validation database
+            if 'version' in var_info:
+                dataset_version = info['properties']['version']
+                if not dataset_version.startswith('v'):
+                    dataset_version = 'v' + dataset_version
+                assert dataset_version.count('v') == 1
+                if dataset_version != var_info['version']:
+                    # Dataset is published for a different version than the one in the validation database
+                    if dataset_version > var_info['version']:
+                        published_newer_version[var_name].append(dataset_id)
+                    elif dataset_version < var_info['version']:
+                        published_older_version[var_name].append(dataset_id)
+                    else:
+                        raise Exception(f'dataset version new/old comparison failed on {model} {var_name}: ' +
+                                        f'{dataset_version}, {var_info["version"]}')
+
+        models_checked = ', '.join(sorted(variable_status.keys()))
+        print(f'Models checked for validation statuses: {models_checked}')
+
+
+        if len(published_unapproved) > 0:
+            # Variables that were published but are not recorded as approved in the validation database
+            nv = len(published_unapproved)
+            nd = sum([len(dataset_ids) for dataset_ids in published_unapproved.values()])
+            print(f'{nv} variables for {nd} datasets are published but NOT APPROVED in the validation database')
+            outfile = 'published_unapproved.json'
+            with open(outfile, 'w') as f:
+                json.dump(published_unapproved, f, indent=4)
+                print(f'  Wrote {outfile}')
         else:
+            print('All published variables are APPROVED in the validation database')
+
+        if len(published_newer_version) > 0:
+            # Variables that were published at a version newer than the one in the validation database
+            nv = len(published_newer_version)
+            nd = sum([len(dataset_ids) for dataset_ids in published_newer_version.values()])
+            print(f'Published version of {nv} variables for {nd} datasets is NEWER than the validation database version')
+            outfile = 'published_newer_version.json'
+            with open(outfile, 'w') as f:
+                json.dump(published_newer_version, f, indent=4)
+                print(f'  Wrote {outfile}')
+        else:
+            print('No published variables have version NEWER than the validation database version')
+
+        if len(published_older_version) > 0:
+            # Variables that were published at a version older than the one in the validation database
+            nv = len(published_older_version)
+            nd = sum([len(dataset_ids) for dataset_ids in published_older_version.values()])
+            print(f'Published version of {nv} variables for {nd} datasets is OLDER than the validation database version')
+            outfile = 'published_older_version.json'
+            with open(outfile, 'w') as f:
+                json.dump(published_older_version, f, indent=4)
+                print(f'  Wrote {outfile}')
+        else:
+            print('No published variables have version OLDER than the validation database version')
+
+        write_retraction_lists = len(published_unapproved) > 0
+
+        if write_retraction_lists:
             retract_vars = OrderedDict()
             retract_datasets = []
             for var_name in sorted(published_unapproved.keys(), key=str.lower):
