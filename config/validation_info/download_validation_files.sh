@@ -1,3 +1,8 @@
+# Query A4D validation database to get validation status of variables.
+# Author: Kristi Webb
+# 
+# get_validation_statuses.py call this script to query the database for csv_version = 1.
+
 
 # port of the validation database cluster
 export PGPORT=44051
