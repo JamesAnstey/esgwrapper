@@ -27,7 +27,8 @@ from esgwrapper.utils.commands import (check_env, exec_cmds, log_cmds)
 from esgwrapper.utils.tools import (load_config_file,
                                     find_datasets, get_unique_param_values, match_params,
                                     check_a4d_validation_status,
-                                    data_request_checks, get_dreq_validation_file)
+                                    data_request_checks, get_dreq_validation_file,
+                                    cmip7_compound_name_without_realm)
 from esgwrapper.utils.esgfsearch import search, show_params, parse_file_size_str, file_size_str
 
 ##############################################################################
@@ -94,6 +95,9 @@ def parse_args():
                         help='turn off filtering based on the data request')
     parser.add_argument('-nval', '--no-validation', action='store_true', default=False,
                         help='turn off checking of validation list (Stamp of Approval) - use with caution!')
+    parser.add_argument('-vars', '--variables', type=str,
+                        help='for -d, json file listing compound names of variables to keep' +
+                        ' (applied before all other filtering options)')
 
     parser.add_argument('-r', '--retries', type=int, default=0,
                         help='number of times to retry publishing command if it fails (default: 0)')
@@ -251,6 +255,31 @@ def main():
             search_esgf = False
             check_data_request = False
             search_esgf_ng = True
+
+        if args.variables:
+            with open(args.variables) as f:
+                var_names = json.load(f)['Compound Name']
+            # "realm" is not available from the inventory.
+            # It's not required as part of the unique variable name in CMIP7, so prune it.
+            var_names_no_realm = [s.partition('.')[-1] for s in var_names]
+            # Confirm that this doesn't violate the uniqueness assumption
+            assert len(set(var_names_no_realm)) == len(set(var_names))
+            keep_var_names = var_names_no_realm
+            keep_datasets = set()
+            keep_variables = set()
+            exclude_variables = set()
+            for dataset_id, info in datasets.items():
+                var_name = cmip7_compound_name_without_realm(info['params'])
+                if var_name in keep_var_names:
+                    keep_datasets.add(dataset_id)
+                    keep_variables.add(var_name)
+                else:
+                    exclude_variables.add(var_name)
+            n = len(datasets)
+            datasets = {s: datasets[s] for s in keep_datasets}
+            print(f'  Retaining only variables listed in {args.variables}')
+            print(f'  --> excluded {len(exclude_variables)} variable from {n-len(datasets)} datasets')
+            print(f'  --> kept {len(keep_variables)} variables from {len(datasets)} datasets')
 
         # Apply filters from the config-datasets file
         config_dat = {'keep':{}, 'exclude':{}} | config_dat
