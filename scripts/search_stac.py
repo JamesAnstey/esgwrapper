@@ -44,6 +44,8 @@ def main():
     models.append('CanESM5-1')
     models.append('CanESM6-0-MR')
 
+    print('Will search stac for these models: ' + ', '.join(models))
+
     datasets = []
     results = {}
     queries = []
@@ -99,12 +101,18 @@ def main():
         f.write(w)
         print(f'Wrote {outfile} listing {len(datasets)} datasets found on {index}')
 
+    time_taken = time.time() - time_taken
+    fmt = '%.4f'
+    print(f'ESGF search took {fmt % time_taken} s')
+
     # Output json file list datasets and info about them
     datasets = OrderedDict({dataset_id: results[dataset_id] for dataset_id in sorted(results.keys(), key=str.lower)})
     out = OrderedDict({
         'Header': OrderedDict({
             'index': index,
             'url_endpoint': url_endpoint,
+            'search began at': date_str,
+            'time taken for search (s)': time_taken,
             'queries': queries,
         }),
         'datasets': datasets
@@ -114,9 +122,6 @@ def main():
         json.dump(out, f, indent=4)
         print(f'Wrote {outfile} with info on {len(datasets)} datasets found on {index}')
 
-    time_taken = time.time() - time_taken
-    fmt = '%.4f'
-    print(f'ESGF search took {fmt % time_taken} s')
 
 if __name__ == '__main__':
     main()
