@@ -403,7 +403,7 @@ def check_a4d_validation_status(datasets, validation_file):
     variable_status = variable_status2
     del variable_status2
 
-    # Go through datasets and exclude any that are not approved.
+    # Go through datasets and exclude any that are not approved or have incorrect version.
     # Log any rejections.
     exclude_datasets = []
     exclude_variables = set()
@@ -413,6 +413,12 @@ def check_a4d_validation_status(datasets, validation_file):
         var_info = variable_status[model][var_name]  # if variable is published, it must have an entry
         if var_info['aggregate_status'] != 'approved':
             logger.info(f' {var_name} not approved for {model}, discarding dataset: {dataset_id}')
+            exclude_datasets.append(dataset_id)
+            exclude_variables.add(cmip7_compound_name(var_info))
+        dataset_version = info['params']['version']  # dataset version found in the inventory
+        if var_info['version'] != dataset_version:
+            assert var_info['version'] != '', 'Was CSV_VERSION=2 used in get_validation_statuses.py?'
+            logger.info(f' {var_name} incorrect version {dataset_version} for {model}, discarding dataset: {dataset_id}')
             exclude_datasets.append(dataset_id)
             exclude_variables.add(cmip7_compound_name(var_info))
     for dataset_id in exclude_datasets:
