@@ -98,6 +98,9 @@ def parse_args():
     parser.add_argument('-vars', '--variables', type=str,
                         help='for -d, json file listing compound names of variables to keep' +
                         ' (applied before all other filtering options)')
+    parser.add_argument('-core', '--BCVs', action='store_true', default=False,
+                        help='shorthand for applying the -vars option with the list of BCVs' +
+                        ' (Baseline Climate Variables, the Core priority variables of the CMIP7 DR)')
 
     parser.add_argument('-r', '--retries', type=int, default=0,
                         help='number of times to retry publishing command if it fails (default: 0)')
@@ -256,8 +259,13 @@ def main():
             check_data_request = False
             search_esgf_ng = True
 
-        if args.variables:
-            with open(args.variables) as f:
+        variables_file = args.variables
+        if args.BCVs:
+            # Shorthand for using the CMIP7 BCVs variables list in the config.
+            # If user passed a filename via args.variables, this overrides it.
+            variables_file = CONFIG_FILES_DIR / 'variables_info' / 'BCVs.json'
+        if variables_file:
+            with open(variables_file) as f:
                 var_names = json.load(f)['Compound Name']
             # "realm" is not available from the inventory.
             # It's not required as part of the unique variable name in CMIP7, so prune it.
@@ -277,9 +285,9 @@ def main():
                     exclude_variables.add(var_name)
             n = len(datasets)
             datasets = {s: datasets[s] for s in keep_datasets}
-            print(f'  Retaining only variables listed in {args.variables}')
-            print(f'  --> excluded {len(exclude_variables)} variable from {n-len(datasets)} datasets')
-            print(f'  --> kept {len(keep_variables)} variables from {len(datasets)} datasets')
+            print(f'Retaining only variables listed in {variables_file}')
+            print(f'  --> excluded {len(exclude_variables)} variable ({n-len(datasets)} datasets)')
+            print(f'  --> kept {len(keep_variables)} variables ({len(datasets)} datasets)')
 
         # Apply filters from the config-datasets file
         config_dat = {'keep':{}, 'exclude':{}} | config_dat
