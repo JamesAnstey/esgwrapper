@@ -1,9 +1,11 @@
 from pathlib import Path
 
-repo_dir = Path(__file__).parents[2]
+REPO_DIR = Path(__file__).parents[2]
 
-CONFIG_FILES_DIR = Path( repo_dir / 'config' )
-WORK_DIRS_LOCATION = Path( repo_dir / 'work' )
+CONFIG_FILES_DIR = Path( REPO_DIR / 'config' )
+WORK_DIRS_LOCATION = Path( REPO_DIR / 'work' )
+
+ESGCET_CONFIG_FILES_DIR = CONFIG_FILES_DIR / 'esgcet_files'
 
 DEFAULT_DATASETS_CONFIG_FILE = 'config-datasets.yaml'
 DEFAULT_WORKDIRS_CONFIG_FILE = 'config-workdirs.yaml'

@@ -44,7 +44,11 @@ def main():
     models.append('CanESM5-1')
     models.append('CanESM6-0-MR')
 
-    print('Will search stac for these models: ' + ', '.join(models))
+    if args.all:
+        # hack
+        models = models[:1]
+    else:
+        print('Will search stac for these models: ' + ', '.join(models))
 
     datasets = []
     results = {}
