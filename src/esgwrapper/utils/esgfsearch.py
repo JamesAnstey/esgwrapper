@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 
 import json
+import logging
 import os
 import time
 import urllib.request
 from copy import deepcopy
 from math import ceil
+
+
+logger = logging.getLogger(__name__)
 
 SEP_DATASET = '.'
 
@@ -20,6 +24,7 @@ SIZE_SUFFIX = {
     'TB': BLOCK_SIZE**4,
     'PB': BLOCK_SIZE**5,
 }
+
 
 def search(params,
            dataset_parameters,

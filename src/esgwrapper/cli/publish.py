@@ -22,21 +22,41 @@ from pystac_client import Client
 from textwrap import dedent
 
 from esgwrapper import (CONFIG_FILES_DIR, DEFAULT_DATASETS_CONFIG_FILE,
-                        DEFAULT_DATASETS_FILE, DEFAULT_INVENTORY_FILE)
+                        DEFAULT_DATASETS_FILE, DEFAULT_INVENTORY_FILE,
+                        SEND_STDOUT_TO_LOGFILE)
 from esgwrapper.utils.commands import (check_env, exec_cmds, log_cmds)
 from esgwrapper.utils.tools import (load_config_file,
                                     find_datasets, get_unique_param_values, match_params,
                                     check_a4d_validation_status,
                                     data_request_checks, get_dreq_validation_file,
-                                    cmip7_compound_name_without_realm)
+                                    cmip7_compound_name_without_realm,
+                                    TeeStdoutToLogger)
 from esgwrapper.utils.esgfsearch import search, show_params, parse_file_size_str, file_size_str
 
-##############################################################################
 
 DATE_FORMAT = '%d %b %Y, %H:%M:%S UTC'
 QC_REPORTS_DIR = 'ccreport'
-
 VALIDATION_FILE = CONFIG_FILES_DIR / 'validation_info' / 'validation_status.json'
+PUBLISHING_ACTIONS = OrderedDict({
+    # Define different publishing actions as input flags
+    'inventory': {
+        'short': '-i',
+        'help': f'inventory datasets and write info on them to json file (default: {DEFAULT_INVENTORY_FILE})'
+    },
+    'datasets': {
+        'short': '-d',
+        'help': f'from inventory find datasets to publish and write info on them to json file (default: {DEFAULT_DATASETS_FILE})'
+    },
+    'mapfile': {
+        'short': '-m',
+        'help': 'generate mapfiles'
+    },
+    'publish': {
+        'short': '-p',
+        'help': 'publish to ESGF'
+    },
+})
+
 
 def parse_args():
 
@@ -47,32 +67,11 @@ def parse_args():
     parser.add_argument('-c', '--config', type=str, default=DEFAULT_DATASETS_CONFIG_FILE,
                         help='name of config file containing datasets to publish, default: %(default)s')
 
-    # Define different publishing actions as input flags
-    actions = OrderedDict({
-        'inventory': {
-            'short': '-i',
-            'help': f'inventory datasets and write info on them to json file (default: {DEFAULT_INVENTORY_FILE})'
-        },
-        'datasets': {
-            'short': '-d',
-            'help': f'from inventory find datasets to publish and write info on them to json file (default: {DEFAULT_DATASETS_FILE})'
-        },
-        'mapfile': {
-            'short': '-m',
-            'help': 'generate mapfiles'
-        },
-        'publish': {
-            'short': '-p',
-            'help': 'publish to ESGF'
-        },
-    })
-    for action, d in actions.items():
+    for action, d in PUBLISHING_ACTIONS.items():
         parser.add_argument(d['short'], f'--{action}', action='store_true', default=False, help=d['help'])
 
     parser.add_argument('-dry', '--dry-run', action='store_true', default=False,
                         help='show commands but don\'t execute them')
-    parser.add_argument('-v', '--verbose', action='store_true', default=False,
-                       help='show logging info on stdout')
 
     parser.add_argument('-mc', '--mapfile-clobber', action='store_true', default=False,
                         help='overwrite mapfile if it already exists')
@@ -121,36 +120,48 @@ def parse_args():
 
     args = parser.parse_args()
 
-    if not any([args.__dict__[action] for action in actions]):
+    if any([args.__dict__[action] for action in PUBLISHING_ACTIONS]):
+        # Make list of the actions to be performed
+        # actions = [d['short'] for action,d in PUBLISHING_ACTIONS.items() if args.__dict__[action]]
+        actions = [action for action in PUBLISHING_ACTIONS if args.__dict__[action]]
+    else:
+        # User did not specify an action
         print('Specify at least one of these options (invoke with -h for more info): ')
-        for action, d in actions.items():
+        for action, d in PUBLISHING_ACTIONS.items():
             print(f'  {d["short"]}, --{action}')
         sys.exit()
 
-    return args
+    return args, actions
 
 
 def main():
-    args = parse_args()
+    args, actions = parse_args()
 
+    # Get user-specific names for inventory or datasets json files, if passed
     if args.inventory_file:
         inventory_file = args.inventory_file
     if args.datasets_file:
         datasets_file = args.datasets_file
 
-    logger = logging.getLogger('esgwrapper')
+    # Set up logging
+    logger = logging.getLogger(__name__)
     date_run = datetime.now(UTC)
     date_run_str = date_run.strftime('%Y.%m.%d_%H.%M.%S_UTC')
     log_dir = Path('logs')
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    logfile = log_dir / f'esgwrapper_{date_run_str}.log'
+    pyfile = Path(__file__).stem
+    actions_str = '_'.join(actions)
+    # logfile = log_dir / f'{pyfile}_{actions_str}_{date_run_str}.log'
+    logfile = log_dir / f'{actions_str}_{date_run_str}.log'
+    logfile = log_dir / f'{pyfile}_{actions_str}_test.log'
+    if SEND_STDOUT_TO_LOGFILE:
+        sys.stdout = TeeStdoutToLogger(logger, logging.INFO)
     # logging.basicConfig(filename=logfile, filemode='w', level=logging.INFO)
     handlers = [logging.FileHandler(logfile, mode='w')]
-    if args.verbose:
-        handlers.append(logging.StreamHandler(sys.stdout))
     logging.basicConfig(
         level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=handlers
     )
 
@@ -166,15 +177,11 @@ def main():
     config_pub = load_config_file(CONFIG_FILES_DIR / 'config-publisher.yaml')
     dataset_template = config_pub['DRS'][project]['dataset']
 
+    # Decide if existing mapfiles can be overwritten
     if args.mapfile_clobber:
         mapfile_clobber = True
     else:
         mapfile_clobber = config_pub['mapfile']['clobber']
-
-    if args.max_size:
-        max_size = parse_file_size_str(args.max_size)
-    if args.min_size:
-        min_size = parse_file_size_str(args.min_size)
 
     if args.inventory:
         # Determine datasets to publish, write them to datasets_file
@@ -318,7 +325,10 @@ def main():
 
         # Filter based on dataset size
         if args.max_size:
+            # Convert user's input string into a number in bytes
+            max_size = parse_file_size_str(args.max_size)
             print(f'Keeping datasets with size up to {args.max_size} ({max_size} B, {file_size_str(max_size)})')
+            # Prune datasets dict based on dataset size
             keep = set()
             for dataset_id, info in datasets.items():
                 if info['size (bytes)'] <= max_size:
@@ -327,7 +337,10 @@ def main():
             datasets = {s: datasets[s] for s in keep}
             print(f'  --> excluded {n-len(datasets)} datasets')
         if args.min_size:
+            # Convert user's input string into a number in bytes
+            min_size = parse_file_size_str(args.min_size)
             print(f'Keeping datasets with size at least {args.min_size} ({min_size} B, {file_size_str(min_size)})')
+            # Prune datasets dict based on dataset size
             keep = set()
             for dataset_id, info in datasets.items():
                 if info['size (bytes)'] >= min_size:
@@ -687,12 +700,15 @@ def main():
 
     time_taken = time.time() - time_taken
     fmt = '%.2f'
-    time_msg = f' Total time taken: {fmt % time_taken} s ({fmt % (time_taken/60)} min, {fmt % (time_taken/3600)} hr)'
-    logging.info(time_msg)
+    time_msg = f'Total time taken: {fmt % time_taken} s ({fmt % (time_taken/60)} min, {fmt % (time_taken/3600)} hr)'
+    # logger.info(time_msg)
+    print(time_msg)
+    print(f'Wrote logfile: {logfile}')
     print(dedent(f'''
         {time_msg.strip()}
         Wrote logfile: {logfile}
         '''))
+
 
 if __name__ == '__main__':
     main()

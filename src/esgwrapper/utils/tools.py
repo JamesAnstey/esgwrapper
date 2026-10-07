@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import os
 import stat
+import sys
 import yaml
 
 from collections import OrderedDict, defaultdict
@@ -16,7 +17,30 @@ from esgvoc.apps.drs.validator import DrsValidator
 
 from esgwrapper.utils.esgfsearch import file_size_str
 
-logger = logging.getLogger('esgwrapper')
+logger = logging.getLogger(__name__)
+
+
+TIME_STR_FORMAT_BY_LENGTH = {
+    4: '%Y', # example: '2022'
+    6: '%Y%m', # example: '185001'
+    8: '%Y%m%d', # example: '18500101'
+    12: '%Y%m%d%H%M', # example: '202201010300'
+}
+
+
+class TeeStdoutToLogger:
+    def __init__(self, logger, level=logging.INFO):
+        self.logger = logger
+        self.level = level
+        self.terminal = sys.__stdout__  # Keep track of original stdout
+    def write(self, message):
+        # Avoid logging empty lines or pure whitespace from print endings
+        if message.strip():
+            # self.logger.log(self.level, message.strip())
+            self.logger.log(self.level, message)
+        self.terminal.write(message)  # Pass through to original console
+    def flush(self):
+        self.terminal.flush()  # Keep buffering behave correctly
 
 
 def load_config_file(config_file: str | Path) -> dict:
@@ -29,6 +53,7 @@ def load_config_file(config_file: str | Path) -> dict:
         config = yaml.safe_load(f)
         print('Loaded ' + str(config_file))
     return config
+
 
 def match_params(params, reference):
     # Loop over parameters (p) in the reference, checking for matches in each of them
@@ -54,6 +79,7 @@ def match_params(params, reference):
 
     return matches
 
+
 def _validate_dir_permissions(dirpath):
     file_stat = os.stat(dirpath)
     mode = file_stat.st_mode
@@ -62,6 +88,7 @@ def _validate_dir_permissions(dirpath):
     check.append(bool(mode & stat.S_IRGRP))  # group can read
     check.append(bool(mode & stat.S_IROTH))  # whole world can read
     return all(check)
+
 
 def _validate_dataset_path(path: str, params: dict, path_template: str,
                            validator: DrsValidator = None,
@@ -90,6 +117,7 @@ def _validate_dataset_path(path: str, params: dict, path_template: str,
         check.append(validation_report.validated)
 
     return all(check)
+
 
 def _validate_dataset_filename(project: str,
                                filename: str, params: dict, file_template: str,
@@ -135,17 +163,13 @@ def _validate_dataset_filename(project: str,
 
     return all(check)
 
-TIME_STR_FORMAT_BY_LENGTH = {
-    4: '%Y', # example: '2022'
-    6: '%Y%m', # example: '185001'
-    8: '%Y%m%d', # example: '18500101'
-    12: '%Y%m%d%H%M', # example: '202201010300'
-}
+
 def _parse_time_str(s: str) -> datetime:
     n = len(s)
     if n not in TIME_STR_FORMAT_BY_LENGTH:
         raise ValueError(f'Unexpected time string {s} of length={n}, how should it be parsed?')
     return datetime.strptime(s, TIME_STR_FORMAT_BY_LENGTH[n])
+
 
 def _validate_year_ranges(year_ranges: np.array) -> bool:
     '''
@@ -179,6 +203,7 @@ def _validate_year_ranges(year_ranges: np.array) -> bool:
         f'Found negative year gaps in file times: {year_ranges}'
     return bool(np.all(year_gaps <= 1))
 
+
 def _get_file_times(project: str, dataset_files: list[str]) -> np.array:
     year_ranges = np.zeros((len(dataset_files),2))
     year_ranges.fill(np.nan)
@@ -197,6 +222,7 @@ def _get_file_times(project: str, dataset_files: list[str]) -> np.array:
         raise ValueError(f'How to get file times for {project}?')
     assert not np.any(year_ranges == np.nan), f'Failed to find some file time ranges: {year_ranges}'
     return year_ranges
+
 
 def _check_dataset_years(project: str, dataset_files: list[str], params: dict) -> dict:
     '''
@@ -260,6 +286,7 @@ def _check_dataset_years(project: str, dataset_files: list[str], params: dict) -
             return all(check)
     else:
         raise ValueError(f'How to check experiment years for {project}?')
+
 
 def find_datasets(project: str,
                   base_path: str,

@@ -1,8 +1,12 @@
 
+import logging
 import os
 import subprocess
 import sys
 import time
+
+logger = logging.getLogger(__name__)
+
 
 def check_env(config):
     '''
@@ -40,6 +44,7 @@ def check_env(config):
 
     else:
         raise Exception('Need to specify env to run publishing commands')
+
 
 def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries: int = 0) -> list[dict]:
     '''
@@ -83,7 +88,7 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries
             while attempt <= max_attempts:
                 if attempt > 1:
                     # Show message saying this is a retry
-                    print(f'Returned exit status={exit_status}, retrying (attempt {attempt} of {max_attempts})')
+                    print(f'\nReturned exit status={exit_status}, retrying (attempt {attempt} of {max_attempts})')
                 print(cmd)
 
                 # Using subprocess.run works fine but the stdout is not seen by the user
@@ -123,6 +128,7 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries
         cmd_result['time_taken'] = time.time() - start_time
 
     return cmd_results
+
 
 def log_cmds(dataset_id: str, cmd_results: dict) -> str:
     '''

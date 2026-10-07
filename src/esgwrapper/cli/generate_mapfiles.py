@@ -14,14 +14,18 @@ import time
 from collections import OrderedDict
 from datetime import datetime, UTC
 from pathlib import Path
+from textwrap import dedent
 
+from esgwrapper import SEND_STDOUT_TO_LOGFILE
 from esgwrapper.utils.esgfsearch import file_size_str
+from esgwrapper.utils.tools import TeeStdoutToLogger
+
 
 PATH_SWITCH = {
     '/space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP7/final': '/CCCMA_NFS/esg/esg_ng'
 }
-
 DEFAULT_CHKSUM_TYPE = 'sha256'
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -35,7 +39,7 @@ def parse_args():
 
     parser.add_argument('-n', '--number', type=int,
                         help='number of datasets to use from list of datasets (default: all)')
-    parser.add_argument('--clobber', action='store_true', default=False,
+    parser.add_argument('-clb', '--clobber', action='store_true', default=False,
                         help='overwrite mapfile if it already exists')
     parser.add_argument('--orig-path', action='store_true', default=False,
                         help='leave the original path unaltered (ignore any path aliases)')
@@ -46,27 +50,31 @@ def parse_args():
 
     return parser.parse_args()
 
+
 def main():
     args = parse_args()
     path_switch = not args.orig_path
     chksum_type = args.chksum_type
 
-    logger = logging.getLogger('generate_mapfiles')
+    logger = logging.getLogger(__name__)
+    # logger = logging.getLogger('gm')
     date_run = datetime.now(UTC)
     date_run_str = date_run.strftime('%Y.%m.%d_%H.%M.%S_UTC')
     log_dir = Path('logs')
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    logfile = log_dir / f'mapfiles_{date_run_str}.log'
+    pyfile = Path(__file__).stem
+    logfile = log_dir / f'{pyfile}_{date_run_str}.log'
+    logfile = log_dir / f'{pyfile}_test.log'
+    if SEND_STDOUT_TO_LOGFILE:
+        sys.stdout = TeeStdoutToLogger(logger, logging.INFO)
     handlers=[
         logging.FileHandler(logfile, mode='w'),
-        logging.StreamHandler(sys.stdout)
     ]
     logging.basicConfig(
         level=logging.INFO,
         handlers=handlers
     )
-
 
     # Example contents of a CMIP7 mapfile (there's one line like this for each file in a dataset):
     # MIP-DRS7.CMIP7.CMIP.CCCma.CanESM5-1.1pctCO2.r1i1p2f1.glb.mon.pr.tavg-u-hxy-u.g120.v20190429 | /space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP7/final/MIP-DRS7/CMIP7/CMIP/CCCma/CanESM5-1/1pctCO2/r1i1p2f1/glb/mon/pr/tavg-u-hxy-u/g120/v20190429/pr_tavg-u-hxy-u_mon_glb_g120_CanESM5-1_1pctCO2_r1i1p2f1_185001-190012.nc | 16055367 | mod_time=1787125699.7238321 | checksum=47e91c66d8ee78a26ef10b103bc9b981a628d855fb92380d89a91ac9e694f8d0 | checksum_type=SHA256
@@ -162,13 +170,19 @@ def main():
     size_str = file_size_str(total_size)
     fmt = '%.2f'
     # logger.info(' SUMMARY:')
-    logger.info(f'\n  Total time for mapfile generation: {fmt % total_time} s '
-                f'({fmt % (total_time/60)} min, {fmt % (total_time/3600)} hr)'
-                f'\n  Total no. of datasets: {len(datasets)}'
-                f'\n  Total size of datasets: {size_str}'
-                )
+    # logger.info(f'\n  Total time for mapfile generation: {fmt % total_time} s '
+    #             f'({fmt % (total_time/60)} min, {fmt % (total_time/3600)} hr)'
+    #             f'\n  Total no. of datasets: {len(datasets)}'
+    #             f'\n  Total size of datasets: {size_str}'
+    #             )
+    # print(f'\nWrote logfile: {logfile}')
+    print(dedent(f'''
+        Total time for mapfile generation: {fmt % total_time} s ({fmt % (total_time/60)} min, {fmt % (total_time/3600)} hr)
+        Total no. of datasets: {len(datasets)}
+        Total size of datasets: {size_str}
+        Wrote logfile: {logfile}
+        '''))
 
-    print(f'\nWrote logfile: {logfile}')
 
 if __name__ == '__main__':
     main()

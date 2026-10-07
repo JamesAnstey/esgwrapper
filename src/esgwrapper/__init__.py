@@ -12,3 +12,5 @@ DEFAULT_WORKDIRS_CONFIG_FILE = 'config-workdirs.yaml'
 
 DEFAULT_DATASETS_FILE = 'datasets.json'
 DEFAULT_INVENTORY_FILE = 'inventory.json'
+
+SEND_STDOUT_TO_LOGFILE = True
