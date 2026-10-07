@@ -28,18 +28,23 @@ def parse_args():
             Set up one or more working directories for ESGF publishing.
             Work dirs will be created in: {WORK_DIRS_LOCATION}
 
-            With the -u / --update option, these files in an existing work dir will be overwritten:
+            With the -u option, these files in an existing work dir will be overwritten:
                 {fmt % DEFAULT_DATASETS_CONFIG_FILE}  (or use -cd to change name)
                 {fmt % DEFAULT_ESGCET_CONFIG_FILE}  (or use -ce to select a different file from {esgcet_rel_path})
                 sync_to_server.sh
             Nothing else in an existing work dir will be affected (the mapfiles directory will never be overwritten).
+
+            With the -ud option, only {DEFAULT_DATASETS_CONFIG_FILE} (or -cd for different name) is overwritten.
             '''), formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
     parser.add_argument('-c', '--config', type=str, default=DEFAULT_WORKDIRS_CONFIG_FILE,
                         help='config file specifying how to set up working directories, default: %(default)s')
     parser.add_argument('-u', '--update', action='store_true',
-                        help='if a work dir of the same name already exists, update the files in it (overwrites existing files)')
+                        help='overwrite files in existing work dirs')
+    parser.add_argument('-ud', '--update-datasets', action='store_true',
+                        help='overwrite only the datasets config file in existing work dirs\
+                              (takes precedence over -u)')
     parser.add_argument('-np', '--no-prompt', action='store_true',
                         help='do not prompt user to confirm work dir creation')
     parser.add_argument('-cd', '--config-datasets', type=str, default=DEFAULT_DATASETS_CONFIG_FILE,
@@ -144,8 +149,9 @@ def main():
 
         work_dir_name = wrk.dir_name()
         work_dir_path = WORK_DIRS_LOCATION / work_dir_name
-        if os.path.exists(work_dir_path) and not args.update:
-            print(f'\nWork dir already exists (invoke with -u to update): {work_dir_path}')
+        update_work_dir = args.update or args.update_datasets
+        if os.path.exists(work_dir_path) and not update_work_dir:
+            print(f'\nWork dir already exists: {work_dir_path}')
             continue
 
         config_dat_yaml = yaml.safe_dump(config_dat, default_flow_style=False, sort_keys=False)
@@ -168,6 +174,10 @@ def main():
             with open(outfile, 'w') as f:
                 f.write(config_dat_yaml)
             files_to_sync.append(filename)
+            if args.update_datasets:
+                # Only this update is requested, skip the other ones below
+                print(f'Wrote {args.config_datasets}')
+                continue
 
             # Copy publisher config file to work dir
             filename = args.config_esgcet
