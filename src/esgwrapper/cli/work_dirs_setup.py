@@ -199,14 +199,14 @@ def main():
             hostname = server['hostname']
             work_dir_path_on_server = Path(server['work_dirs_location'])
             script_filename = 'sync_to_server.sh'
-            file_list = ' '.join(files_to_sync)
+            # file_list = ' '.join(files_to_sync)
             script_contents = dedent(f'''\
                 # Create work dir on server (no effect if dir already exists)
                 ssh {user}@{hostname} "mkdir -p {work_dir_path_on_server / work_dir_name}"
                 # Sync files to work dir on server
                 ''')
-            for file in file_list:
-                script_contents += f'\nrsync -tpur {file} {user}@{hostname}:{work_dir_path_on_server / work_dir_name}'
+            for file in files_to_sync:
+                script_contents += f'rsync -tpur {file} {user}@{hostname}:{work_dir_path_on_server / work_dir_name}\n'
 
             outfile = work_dir_path / script_filename
             with open(outfile, 'w') as f:

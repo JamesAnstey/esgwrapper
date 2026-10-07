@@ -318,7 +318,7 @@ def main():
 
         # Filter based on dataset size
         if args.max_size:
-            print(f'Keeping datasets with size up to {args.max_size} ({max_size} B)')
+            print(f'Keeping datasets with size up to {args.max_size} ({max_size} B, {file_size_str(max_size)})')
             keep = set()
             for dataset_id, info in datasets.items():
                 if info['size (bytes)'] <= max_size:
@@ -327,7 +327,7 @@ def main():
             datasets = {s: datasets[s] for s in keep}
             print(f'  --> excluded {n-len(datasets)} datasets')
         if args.min_size:
-            print(f'Keeping datasets with size at least {args.min_size} ({min_size} B)')
+            print(f'Keeping datasets with size at least {args.min_size} ({min_size} B, {file_size_str(min_size)})')
             keep = set()
             for dataset_id, info in datasets.items():
                 if info['size (bytes)'] >= min_size:
