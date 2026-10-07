@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-Generate mapfiles for use with esgpublish (from esgcet package).
+Generate mapfiles for use with esgpublish (https://esg-publisher.readthedocs.io/en/main/index.html).
 '''
 
 import argparse
@@ -8,7 +8,6 @@ import hashlib
 import json
 import logging
 import os
-import sys
 import time
 
 from collections import OrderedDict
@@ -16,9 +15,8 @@ from datetime import datetime, UTC
 from pathlib import Path
 from textwrap import dedent
 
-from esgwrapper import SEND_STDOUT_TO_LOGFILE
 from esgwrapper.utils.esgfsearch import file_size_str
-from esgwrapper.utils.tools import TeeStdoutToLogger
+from esgwrapper.utils.log_config import init_logging
 
 
 PATH_SWITCH = {
@@ -56,25 +54,14 @@ def main():
     path_switch = not args.orig_path
     chksum_type = args.chksum_type
 
-    logger = logging.getLogger(__name__)
-    # logger = logging.getLogger('gm')
     date_run = datetime.now(UTC)
+
+    # Set up logging
+    logger = logging.getLogger(__name__)
     date_run_str = date_run.strftime('%Y.%m.%d_%H.%M.%S_UTC')
-    log_dir = Path('logs')
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
     pyfile = Path(__file__).stem
-    logfile = log_dir / f'{pyfile}_{date_run_str}.log'
-    logfile = log_dir / f'{pyfile}_test.log'
-    if SEND_STDOUT_TO_LOGFILE:
-        sys.stdout = TeeStdoutToLogger(logger, logging.INFO)
-    handlers=[
-        logging.FileHandler(logfile, mode='w'),
-    ]
-    logging.basicConfig(
-        level=logging.INFO,
-        handlers=handlers
-    )
+    logfilename = Path(f'{pyfile}_{date_run_str}.log')
+    logfile = init_logging(logger, logfilename)
 
     # Example contents of a CMIP7 mapfile (there's one line like this for each file in a dataset):
     # MIP-DRS7.CMIP7.CMIP.CCCma.CanESM5-1.1pctCO2.r1i1p2f1.glb.mon.pr.tavg-u-hxy-u.g120.v20190429 | /space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP7/final/MIP-DRS7/CMIP7/CMIP/CCCma/CanESM5-1/1pctCO2/r1i1p2f1/glb/mon/pr/tavg-u-hxy-u/g120/v20190429/pr_tavg-u-hxy-u_mon_glb_g120_CanESM5-1_1pctCO2_r1i1p2f1_185001-190012.nc | 16055367 | mod_time=1787125699.7238321 | checksum=47e91c66d8ee78a26ef10b103bc9b981a628d855fb92380d89a91ac9e694f8d0 | checksum_type=SHA256

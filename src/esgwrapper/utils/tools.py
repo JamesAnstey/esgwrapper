@@ -28,19 +28,19 @@ TIME_STR_FORMAT_BY_LENGTH = {
 }
 
 
-class TeeStdoutToLogger:
-    def __init__(self, logger, level=logging.INFO):
-        self.logger = logger
-        self.level = level
-        self.terminal = sys.__stdout__  # Keep track of original stdout
-    def write(self, message):
-        # Avoid logging empty lines or pure whitespace from print endings
-        if message.strip():
-            # self.logger.log(self.level, message.strip())
-            self.logger.log(self.level, message)
-        self.terminal.write(message)  # Pass through to original console
-    def flush(self):
-        self.terminal.flush()  # Keep buffering behave correctly
+# class TeeStdoutToLogger:
+#     def __init__(self, logger, level=logging.INFO):
+#         self.logger = logger
+#         self.level = level
+#         self.terminal = sys.__stdout__  # Keep track of original stdout
+#     def write(self, message):
+#         # Avoid logging empty lines or pure whitespace from print endings
+#         if message.strip():
+#             # self.logger.log(self.level, message.strip())
+#             self.logger.log(self.level, message)
+#         self.terminal.write(message)  # Pass through to original console
+#     def flush(self):
+#         self.terminal.flush()  # Keep buffering behave correctly
 
 
 def load_config_file(config_file: str | Path) -> dict:

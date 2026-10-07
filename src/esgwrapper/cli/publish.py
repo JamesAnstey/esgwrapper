@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 '''
-Thin wrapper around ESGF publishing software.
+Wrapper around ESGF publishing software (https://esg-publisher.readthedocs.io/en/main/index.html).
+
 Use to publish CCCma datasets to ESGF.
-
-https://esg-publisher.readthedocs.io/en/main/index.html
-
 '''
+
 import argparse
 import json
 import logging
@@ -22,16 +21,15 @@ from pystac_client import Client
 from textwrap import dedent
 
 from esgwrapper import (CONFIG_FILES_DIR, DEFAULT_DATASETS_CONFIG_FILE,
-                        DEFAULT_DATASETS_FILE, DEFAULT_INVENTORY_FILE,
-                        SEND_STDOUT_TO_LOGFILE)
+                        DEFAULT_DATASETS_FILE, DEFAULT_INVENTORY_FILE)
 from esgwrapper.utils.commands import (check_env, exec_cmds, log_cmds)
+from esgwrapper.utils.esgfsearch import search, show_params, parse_file_size_str, file_size_str
+from esgwrapper.utils.log_config import init_logging
 from esgwrapper.utils.tools import (load_config_file,
                                     find_datasets, get_unique_param_values, match_params,
                                     check_a4d_validation_status,
                                     data_request_checks, get_dreq_validation_file,
-                                    cmip7_compound_name_without_realm,
-                                    TeeStdoutToLogger)
-from esgwrapper.utils.esgfsearch import search, show_params, parse_file_size_str, file_size_str
+                                    cmip7_compound_name_without_realm)
 
 
 DATE_FORMAT = '%d %b %Y, %H:%M:%S UTC'
@@ -143,27 +141,14 @@ def main():
     if args.datasets_file:
         datasets_file = args.datasets_file
 
+    date_run = datetime.now(UTC)
+
     # Set up logging
     logger = logging.getLogger(__name__)
-    date_run = datetime.now(UTC)
     date_run_str = date_run.strftime('%Y.%m.%d_%H.%M.%S_UTC')
-    log_dir = Path('logs')
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-    pyfile = Path(__file__).stem
     actions_str = '_'.join(actions)
-    # logfile = log_dir / f'{pyfile}_{actions_str}_{date_run_str}.log'
-    logfile = log_dir / f'{actions_str}_{date_run_str}.log'
-    logfile = log_dir / f'{pyfile}_{actions_str}_test.log'
-    if SEND_STDOUT_TO_LOGFILE:
-        sys.stdout = TeeStdoutToLogger(logger, logging.INFO)
-    # logging.basicConfig(filename=logfile, filemode='w', level=logging.INFO)
-    handlers = [logging.FileHandler(logfile, mode='w')]
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=handlers
-    )
+    logfilename = Path(f'{actions_str}_{date_run_str}.log')
+    logfile = init_logging(logger, logfilename)
 
     date_run_str = date_run.strftime(DATE_FORMAT)
     logger.info(f' Starting publish.py at {date_run_str}')
