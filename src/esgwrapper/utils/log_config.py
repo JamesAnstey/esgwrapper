@@ -29,7 +29,6 @@ def init_logging(logger: logging.Logger, logfilename: str | Path) -> Path:
     log_dir.mkdir(exist_ok=True)
     logfile = log_dir / logfilename
 
-    # logger = logging.getLogger(__name__)
     if SEND_STDOUT_TO_LOGFILE:
         sys.stdout = TeeStdoutToLogger(logger, logging.INFO)
     # logging.basicConfig(filename=logfile, filemode='w', level=logging.INFO)

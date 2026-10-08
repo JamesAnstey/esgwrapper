@@ -98,8 +98,10 @@ def exec_cmds(commands: list[str], cmd_args: dict, do_cmds: bool = True, retries
                 # Using subprocess.Popen allows user to see the stdout
                 result = subprocess.Popen(
                     cmd.split(),
-                    stdout=sys.stdout, # preserves colour (if any) in the stdout
-                    stderr=sys.stderr,
+                    # stdout=sys.stdout, # preserves colour (if any) in the stdout
+                    # stderr=sys.stderr,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
                     text=True,
                 )
                 result.communicate()
