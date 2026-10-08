@@ -21,11 +21,16 @@ class TeeStdoutToLogger:
         self.terminal.write(message)  # Pass through to original console
     def flush(self):
         self.terminal.flush()  # Keep buffering behave correctly
+
     def fileno(self):
-        # Delegate to the original stream's fileno if available
-        if hasattr(self.original_stream, "fileno"):
-            return self.original_stream.fileno()
-        raise AttributeError("TeeStdoutToLogger does not have a fileno")
+        """Returns the file descriptor of the underlying terminal stream."""
+        return self.terminal.fileno()
+
+    # def fileno(self):
+    #     # Delegate to the original stream's fileno if available
+    #     if hasattr(self.original_stream, "fileno"):
+    #         return self.original_stream.fileno()
+    #     raise AttributeError("TeeStdoutToLogger does not have a fileno")
 
 
 def init_logging(logger: logging.Logger, logfilename: str | Path) -> Path:
