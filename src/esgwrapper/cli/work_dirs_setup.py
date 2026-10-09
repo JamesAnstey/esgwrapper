@@ -159,7 +159,14 @@ def main():
             print(f'\nWork dir path:\n  {work_dir_path}')
             print(f'\n{args.config_datasets} parameters:')
             print(indent(config_dat_yaml, '  '))
-            ok = input(f'Set up {work_dir_name} work dir? (ENTER or "y" for yes, anything else for no): ')
+            how_to_respond = ' (ENTER or "y" for yes, anything else for no): '
+            if args.update_datasets:
+                msg = f'Update {args.config_datasets} in {work_dir_name}?{how_to_respond}'
+            elif args.update:
+                msg = f'Update files in {work_dir_name}?{how_to_respond}'
+            else:
+                msg = f'Set up {work_dir_name} work dir?{how_to_respond}'
+            ok = input(msg)
         else:
             ok = ''
         if ok in ['', 'y']:
