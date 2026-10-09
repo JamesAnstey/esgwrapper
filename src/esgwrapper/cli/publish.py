@@ -602,11 +602,11 @@ def main():
             print(f'\n{msg}')
             logger.info(f' {msg}')
             cmd_args = {
-                'mapfile_path' : os.path.normpath(os.path.join(
+                'mapfile_path': os.path.normpath(os.path.join(
                     mapfile_base_path, mapfile_path_template.format(**info['params'])
                     )),
-                'dataset_path' : info['path'],
-                'project' : project,
+                'dataset_path': info['path'],
+                'project': project,
             }
             if not mapfile_clobber:
                 filename = mapfile_template.format(**info['params'])
@@ -662,7 +662,8 @@ def main():
             mapfile_path = os.path.join(mapfile_base_path, mapfile_path_template.format(**info['params']))
             mapfile = dataset_id + os.path.extsep + 'map'
             cmd_args = {
-                'mapfile' : os.path.normpath(os.path.join(mapfile_path, mapfile))
+                'mapfile': os.path.normpath(os.path.join(mapfile_path, mapfile)),
+                'esgcet_config_file': config_pub['publish']['esgcet_config_file']
             }
             if not os.path.exists(cmd_args['mapfile']):
                 print('Mapfile not found: ' + cmd_args['mapfile'])

@@ -17,24 +17,14 @@ from esgwrapper import (CONFIG_FILES_DIR, ESGCET_CONFIG_FILES_DIR, DEFAULT_DATAS
                         DEFAULT_WORKDIRS_CONFIG_FILE, WORK_DIRS_LOCATION)
 from esgwrapper.utils.tools import load_config_file
 
-DEFAULT_ESGCET_CONFIG_FILE = 'esg_east.yaml'
 
 def parse_args():
-    esgcet_rel_path = ESGCET_CONFIG_FILES_DIR.relative_to(REPO_DIR)
-    m = max(len(DEFAULT_DATASETS_CONFIG_FILE), len(DEFAULT_ESGCET_CONFIG_FILE))
-    fmt = f'%-{m}s'
     parser = argparse.ArgumentParser(
         description=dedent(f'''\
             Set up one or more working directories for ESGF publishing.
             Work dirs will be created in: {WORK_DIRS_LOCATION}
-
-            With the -u option, these files in an existing work dir will be overwritten:
-                {fmt % DEFAULT_DATASETS_CONFIG_FILE}  (or use -cd to change name)
-                {fmt % DEFAULT_ESGCET_CONFIG_FILE}  (or use -ce to select a different file from {esgcet_rel_path})
-                sync_to_server.sh
-            Nothing else in an existing work dir will be affected (the mapfiles directory will never be overwritten).
-
-            With the -ud option, only {DEFAULT_DATASETS_CONFIG_FILE} (or -cd for different name) is overwritten.
+            -u can be used to update existing work dir files.
+            -ud, -ue allow updates of single files.
             '''), formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
@@ -49,10 +39,7 @@ def parse_args():
     parser.add_argument('-np', '--no-prompt', action='store_true',
                         help='do not prompt user to confirm work dir creation')
     parser.add_argument('-cd', '--config-datasets', type=str, default=DEFAULT_DATASETS_CONFIG_FILE,
-                        help='datasets config file to write in work dir, default: %(default)s')
-    parser.add_argument('-ce', '--config-esgcet', type=str, default=DEFAULT_ESGCET_CONFIG_FILE,
-                        help=f'ESGF publisher config file to copy into the work dir, default: %(default)s\
-                             (available files in {esgcet_rel_path})')
+                        help='name of datasets config file to write in work dir, default: %(default)s')
 
     return parser.parse_args()
 
@@ -105,6 +92,7 @@ def main():
     config_pub = load_config_file(CONFIG_FILES_DIR / 'config-publisher.yaml')
     path_template = config_pub['DRS'][project]['path']
     path_attrs = [s.strip('}').strip('{') for s in path_template.split('}/{')]
+    esgcet_config_file = config_pub['publish']['esgcet_config_file']
 
     # Get parameters that will be used by all work dirs unless overridden
     base_config = work_dir(**config_wrk)
@@ -177,15 +165,9 @@ def main():
                     if args.update_datasets:
                         msg.append(f'Update {args.config_datasets} in {work_dir_name}?')
                     if args.update_esgcet:
-                        msg.append(f'Update {args.config_esgcet} in {work_dir_name}?')
+                        msg.append(f'Update {esgcet_config_file} in {work_dir_name}?')
             msg.append(' (ENTER or "y" for yes, anything else for no): ')
             ok = input('\n'.join(msg))
- 
-            # if args.update:
-            #     msg = f'Update files in {work_dir_name}?{how_to_respond}'
-            # else:
-            #     msg = f'Set up {work_dir_name} work dir?{how_to_respond}'
-            # ok = input(msg)
         else:
             ok = ''
         if ok in ['', 'y']:

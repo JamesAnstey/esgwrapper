@@ -14,17 +14,13 @@ mapfile:
   clobber: False
 
 publish:
+  esgcet_config_file: esg_west.yaml
   venv:
     - /home/scrd106/rja001/venv/pub_test
     - /home/scrd106/rja001/venv/esgpub
     - /home/scrd106/rja001/venv/esgpub_dev
   commands: [
-    # 'esgpublish --map mapfile_list --config esg_east.yaml',
-    # 'esgpublish --map {mapfile} --config $REPO_PATH/esg_ng/esgcet_files/esg_east.yaml'
-
-    # 'esgpublish --map {mapfile} --config esg_east.yaml'
-
-    'esgpublish --map {mapfile} --config esg_west.yaml'
+    'esgpublish --map {mapfile} --config {esgcet_config_file}'
   ]
 
 search_esgf: 
