@@ -60,15 +60,45 @@ def init_filter(reference: dict[str, str | list[str]]) -> dict[str, list[str]]:
 
 def match_params(params: dict[str, str], reference: dict[str, list[str]]) -> dict[str, bool]:
     # Loop over parameters (p) in the reference, checking for matches in each of them
+    '''
+    Check for matching values of parameters (aka attributes) and return dict indicating which matched.
+
+    Arguments
+    ---------
+    params: dict
+        key:value pairs giving parameter values, e.g. "variable_id": "uas"
+
+    reference: dict
+        key:list[value] pairs giving valid values of parameters, e.g. "variable_id": ["uas", "vas"]
+
+    Returns
+    -------
+    matches: dict
+        key:value pairs indicating for each parameter p if params[p] was found in list reference[p].
+        For the above example, matches["variable_id"] will be True since "uas" is in reference["variable_id"].
+        If instead params["variable_id"] == "tas", then matches["variable_id"] will be False since
+        reference["variable_id"] doesn't include "tas".
+    '''
     matches = {}
     for p, values in reference.items():
         if p == 'branded_variable':
+            # Match on branded variable name. Example: pr_tavg-u-hxy-u
             var_name = branded_variable_name(params)
             matches[p] = var_name in values
         elif p == 'cmip7_compound_name_without_realm':
+            # Match CMIP7 compound name, but exclude the realm because it's not essential
+            # and is not found in the DRS (could get it by looking in the nc file or data request,
+            # but the compound name is still unique in the DR without it, so it can be ignored here).
+            # Example: pr.tavg-u-hxy-u.3hr.glb
             var_name = cmip7_compound_name_without_realm(params)
             matches[p] = var_name in values
+        elif p == 'variable_name_from_dataset_id':
+            # Match on variable name with same info as CMIP7 compound name (minus realm) but in the
+            # order the parameters appear in a dataset_id. Example: glb.3hr.pr.tavg-u-hxy-u
+            var_name = variable_name_from_dataset_id(params)
+            matches[p] = var_name in values
         elif p in params:
+            # Match on single DRS parameter (source_id, variable_id, etc)
             matches[p] = params[p] in values
         else:
             raise ValueError(f'Unknown reference term for matching: {p}')
@@ -383,22 +413,34 @@ def get_unique_param_values(datasets, dataset_parameters):
 
 
 def cmip7_compound_name(params: dict[str, str]) -> str:
-   '''
-   Return CMIP7 compound name as defined in the CMIP7 Data Request.
-   This name uniquely identifies a requested variable (i.e., a CMOR variable).
-   '''
-   template = '{realm}.{variable_id}.{branding_suffix}.{frequency}.{region}'
-   return template.format(**params)
+    '''
+    Return CMIP7 compound name as defined in the CMIP7 Data Request.
+    This name uniquely identifies a requested variable (i.e., a CMOR variable).
+    '''
+    template = '{realm}.{variable_id}.{branding_suffix}.{frequency}.{region}'
+    return template.format(**params)
 
 
 def cmip7_compound_name_without_realm(params: dict[str, str]) -> str:
-   '''
-   Return CMIP7 compound name as defined in the CMIP7 Data Request, but excluding the realm.
-   This name should uniquely identifies a requested variable (i.e., a CMOR variable) since the realm
-   is not required for uniqueness.
-   '''
-   template = '{variable_id}.{branding_suffix}.{frequency}.{region}'
-   return template.format(**params)
+    '''
+    Return CMIP7 compound name as defined in the CMIP7 Data Request, but excluding the realm.
+    This name should uniquely identifies a requested variable (i.e., a CMOR variable) since the realm
+    is not required for uniqueness.
+    '''
+    template = '{variable_id}.{branding_suffix}.{frequency}.{region}'
+    return template.format(**params)
+
+
+def variable_name_from_dataset_id(params: dict[str, str]) -> str:
+    '''
+    Same info as for cmip7_compound_name_without_realm, but reordered the way it appears in a dataset_id.
+    For example, in the dataset_id:
+        MIP-DRS7.CMIP7.CMIP.CCCma.CanESM5-1.esm-hist.r5i1p2f1.glb.3hr.pr.tavg-u-hxy-u.g120.v20190429
+    the variable_name_from_dataset_id is:
+        glb.3hr.pr.tavg-u-hxy-u
+    '''
+    template = '{region}.{frequency}.{variable_id}.{branding_suffix}'
+    return template.format(**params)
 
 
 def branded_variable_name(params: dict[str, str]) -> str:
