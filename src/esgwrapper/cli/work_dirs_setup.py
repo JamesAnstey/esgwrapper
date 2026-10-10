@@ -18,6 +18,10 @@ from esgwrapper import (CONFIG_FILES_DIR, ESGCET_CONFIG_FILES_DIR, DEFAULT_DATAS
 from esgwrapper.utils.tools import load_config_file
 
 
+MAPFILES_DIRNAME = 'mapfiles'
+SYNC_SCRIPT = 'sync_to_server.sh'
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description=dedent(f'''\
@@ -44,7 +48,7 @@ def parse_args():
     return parser.parse_args()
 
 
-class work_dir(dict):
+class WorkDir(dict):
     def __init__(self,
                  project: str, inventory: dict,
                  paths: list[str],
@@ -75,15 +79,28 @@ class work_dir(dict):
         return dir_name
 
 
+class WriteFlags():
+    def __init__(self):
+        self.write_config_datasets = False
+        self.write_config_esgcet = False
+        self.write_sync_script = False
+    def __repr__(self):
+        return str(self.__dict__)
+    def write_all(self):
+        self.write_config_datasets = True
+        self.write_config_esgcet = True
+        self.write_sync_script = True
+    def any(self):
+        return any([
+            self.write_config_datasets,
+            self.write_config_esgcet,
+            self.write_sync_script
+        ])
+
+
 def main():
     args = parse_args()
     prompt_user = not args.no_prompt
-
-    if args.update:
-        # args.update signifies updating all the work dir files that this script manages
-        args.update_datasets = True
-        args.update_esgcet = True
-    update_work_dir = args.update or args.update_datasets or args.update_esgcet
 
     # Load dataset configuration settings from config file
     config_wrk = load_config_file(args.config)
@@ -95,7 +112,7 @@ def main():
     esgcet_config_file = config_pub['publish']['esgcet_config_file']
 
     # Get parameters that will be used by all work dirs unless overridden
-    base_config = work_dir(**config_wrk)
+    base_config = WorkDir(**config_wrk)
 
     # TODO: validate parameters against CVs
 
@@ -144,39 +161,48 @@ def main():
 
         work_dir_name = wrk.dir_name()
         work_dir_path = WORK_DIRS_LOCATION / work_dir_name
-        work_dir_exists = os.path.exists(work_dir_path)
-        if work_dir_exists and not update_work_dir:
-            print(f'\nWork dir already exists: {work_dir_path}')
-            continue
+
+        # Figure out what to write
+        flags = WriteFlags()  # initializes all flags to False
+        if args.update_datasets:
+            flags.write_config_datasets = True
+        if args.update_esgcet:
+            flags.write_config_esgcet = True
+        if args.update:
+            flags.write_all()
+        if work_dir_path.exists():
+            # Dir already exists, so only proceed if there are updates to make
+            if not flags.any():
+                print(f'\nWork dir already exists: {work_dir_path}')
+                continue
+        else:
+            # Dir doesn't exist, so write everything
+            flags.write_all()
 
         config_dat_yaml = yaml.safe_dump(config_dat, default_flow_style=False, sort_keys=False)
         if prompt_user:
             print(f'\nWork dir path:\n  {work_dir_path}')
-            if args.update_datasets:
+            if flags.write_config_datasets:
                 print(f'\n{args.config_datasets} parameters:')
                 print(indent(config_dat_yaml, '  '))
-            msg = []
-            if not work_dir_exists:
-                msg.append(f'Set up {work_dir_name} work dir?')
-            else:
-                if args.update:
-                    msg.append(f'Update files in {work_dir_name}?')
-                else:
-                    if args.update_datasets:
-                        msg.append(f'Update {args.config_datasets} in {work_dir_name}?')
-                    if args.update_esgcet:
-                        msg.append(f'Update {esgcet_config_file} in {work_dir_name}?')
-            msg.append(' (ENTER or "y" for yes, anything else for no): ')
-            ok = input('\n'.join(msg))
+            print('Files to write:')
+            if flags.write_config_datasets:
+                print(f'  {args.config_datasets}')
+            if flags.write_config_esgcet:
+                print(f'  {esgcet_config_file}')
+            if flags.write_sync_script:
+                print(f'  {SYNC_SCRIPT}')
+            if not work_dir_path.exists():
+                print(f'Set up {work_dir_name} work dir?')
+            ok = input('ENTER or "y" for yes, anything else for no: ')
         else:
             ok = ''
         if ok in ['', 'y']:
-            if not os.path.exists(work_dir_path):
-                os.makedirs(work_dir_path)
+            work_dir_path.mkdir(parents=True, exist_ok=True)
 
             files_to_sync = []
 
-            if args.update_datasets:
+            if flags.write_config_datasets:
                 # Create datasets config file in the work dir
                 filename = args.config_datasets
                 outfile = work_dir_path / filename
@@ -185,54 +211,47 @@ def main():
                 files_to_sync.append(filename)
                 print(f'Wrote {args.config_datasets}')
 
-            if args.update_esgcet:
+            if flags.write_config_esgcet:
                 # Copy publisher config file to work dir
-                filename = args.config_esgcet
+                filename = esgcet_config_file
                 shutil.copy( ESGCET_CONFIG_FILES_DIR / filename, work_dir_path / filename)
                 files_to_sync.append(filename)
-                print(f'Wrote {args.config_esgcet}')
-
-            if not args.update:
-                # Skip other updates below
-                continue
+                print(f'Wrote {esgcet_config_file}')
 
             # Create dir for mapfiles, if it doesn't already exist
             # If updating an existing work dir, the mapfiles dir will NOT be overwritten
             # (that would be bad - it can take a while to compute mapfiles)
-            mapfiles_dirname = 'mapfiles'
-            mapfiles_path = work_dir_path / mapfiles_dirname
-            if not os.path.exists(mapfiles_path):
-                os.makedirs(mapfiles_path)
-            files_to_sync.append(mapfiles_dirname)
+            mapfiles_path = work_dir_path / MAPFILES_DIRNAME
+            mapfiles_path.mkdir(parents=True, exist_ok=True)
+            files_to_sync.append(MAPFILES_DIRNAME)
 
-            # Create script to sync work dir to ESGF server
-            server = config_wrk['server']
-            user = server['user']
-            hostname = server['hostname']
-            work_dir_path_on_server = Path(server['work_dirs_location'])
-            script_filename = 'sync_to_server.sh'
-            # file_list = ' '.join(files_to_sync)
-            script_contents = dedent(f'''\
-                # Create work dir on server (no effect if dir already exists)
-                ssh {user}@{hostname} "mkdir -p {work_dir_path_on_server / work_dir_name}"
-                # Sync files to work dir on server
-                ''')
-            for file in files_to_sync:
-                script_contents += f'rsync -tpur {file} {user}@{hostname}:{work_dir_path_on_server / work_dir_name}\n'
+            if flags.write_sync_script:
+                # Create script to sync work dir to ESGF server
+                server = config_wrk['server']
+                user = server['user']
+                hostname = server['hostname']
+                work_dir_path_on_server = Path(server['work_dirs_location'])
+                # file_list = ' '.join(files_to_sync)
+                script_contents = dedent(f'''\
+                    # Create work dir on server (no effect if dir already exists)
+                    ssh {user}@{hostname} "mkdir -p {work_dir_path_on_server / work_dir_name}"
+                    # Sync files to work dir on server
+                    ''')
+                for file in files_to_sync:
+                    script_contents += f'rsync -tpur {file} {user}@{hostname}:{work_dir_path_on_server / work_dir_name}\n'
 
-            outfile = work_dir_path / script_filename
-            with open(outfile, 'w') as f:
-                f.write(script_contents)
-            # Set script to have user execute permission
-            permissions = os.stat(outfile).st_mode
-            new_permissions = permissions | stat.S_IXUSR
-            os.chmod(outfile, new_permissions)
+                outfile = work_dir_path / SYNC_SCRIPT
+                with open(outfile, 'w') as f:
+                    f.write(script_contents)
+                # Set script to have user execute permission
+                permissions = os.stat(outfile).st_mode
+                new_permissions = permissions | stat.S_IXUSR
+                os.chmod(outfile, new_permissions)
 
             print(f'{work_dir_name} work dir is ready:\n  {work_dir_path}')
 
         else:
-            print(f'Skipping {work_dir_name} work dir creation')
-
+            print(f'Skipping {work_dir_name}')
 
 
 if __name__ == '__main__':
