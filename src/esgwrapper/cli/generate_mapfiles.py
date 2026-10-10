@@ -100,7 +100,7 @@ def main():
     for dataset_id, info in datasets.items():
         k += 1
         path, filenames = info['path'], info['filenames']
-        logger.info(f' Generating mapfile for dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
+        print(f' Dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
         logger.info(f' Dataset path: {path}')
 
         # Example mapfile filename for CMIP7:
@@ -112,7 +112,7 @@ def main():
             os.makedirs(outpath)
         outfile = outpath / f'{dataset_id}.map'
         if not args.clobber and os.path.exists(outfile):
-            logger.info(f' Not overwriting existing mapfile: {outfile}')
+            print(f' Not overwriting existing mapfile: {outfile}')
             continue
 
         contents = OrderedDict()
@@ -149,20 +149,13 @@ def main():
             f.write('\n'.join(lines) + '\n')
 
         time_taken[dataset_id] = time.time() - start_time
-        logger.info(f' Time (s) for {dataset_id}: {time_taken[dataset_id]}')
-        logger.info(f' Wrote {outfile}')
+        print(f' Time (s) for {dataset_id}: {time_taken[dataset_id]}')
+        print(f' Wrote {outfile}')
 
     total_time = sum(time_taken.values())
     total_size = sum([info['size (bytes)'] for info in datasets.values()])
     size_str = file_size_str(total_size)
     fmt = '%.2f'
-    # logger.info(' SUMMARY:')
-    # logger.info(f'\n  Total time for mapfile generation: {fmt % total_time} s '
-    #             f'({fmt % (total_time/60)} min, {fmt % (total_time/3600)} hr)'
-    #             f'\n  Total no. of datasets: {len(datasets)}'
-    #             f'\n  Total size of datasets: {size_str}'
-    #             )
-    # print(f'\nWrote logfile: {logfile}')
     print(dedent(f'''
         Total time for mapfile generation: {fmt % total_time} s ({fmt % (total_time/60)} min, {fmt % (total_time/3600)} hr)
         Total no. of datasets: {len(datasets)}
