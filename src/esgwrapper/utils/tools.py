@@ -28,21 +28,6 @@ TIME_STR_FORMAT_BY_LENGTH = {
 }
 
 
-# class TeeStdoutToLogger:
-#     def __init__(self, logger, level=logging.INFO):
-#         self.logger = logger
-#         self.level = level
-#         self.terminal = sys.__stdout__  # Keep track of original stdout
-#     def write(self, message):
-#         # Avoid logging empty lines or pure whitespace from print endings
-#         if message.strip():
-#             # self.logger.log(self.level, message.strip())
-#             self.logger.log(self.level, message)
-#         self.terminal.write(message)  # Pass through to original console
-#     def flush(self):
-#         self.terminal.flush()  # Keep buffering behave correctly
-
-
 def load_config_file(config_file: str | Path) -> dict:
     '''
     Load yaml configuration file and return contents as dict.
@@ -55,15 +40,11 @@ def load_config_file(config_file: str | Path) -> dict:
     return config
 
 
-def match_params(params, reference):
-    # Loop over parameters (p) in the reference, checking for matches in each of them
-    matches = {}
+def init_filter(reference: dict[str, str | list[str]]) -> dict[str, list[str]]:
+    '''
+    Use to ensure the keep/exclude filters in config_dat are lists of strings.
+    '''
     for p in reference:
-
-        if p not in params:
-            continue
-
-        # Get value(s) of the reference parameter
         if isinstance(reference[p], str):
             # If only a single value (str) was passed, cast it as a list
             values = [reference[p]]
@@ -74,9 +55,23 @@ def match_params(params, reference):
                 raise TypeError(f'list of str is required, received: {values}')
         else:
             raise TypeError(f'wrong type for reference parameters: {type(reference[p])}')
+        reference[p] = values
 
-        matches[p] = params[p] in values
 
+def match_params(params: dict[str, str], reference: dict[str, list[str]]) -> dict[str, bool]:
+    # Loop over parameters (p) in the reference, checking for matches in each of them
+    matches = {}
+    for p, values in reference.items():
+        if p == 'branded_variable':
+            var_name = branded_variable_name(params)
+            matches[p] = var_name in values
+        elif p == 'cmip7_compound_name_without_realm':
+            var_name = cmip7_compound_name_without_realm(params)
+            matches[p] = var_name in values
+        elif p in params:
+            matches[p] = params[p] in values
+        else:
+            raise ValueError(f'Unknown reference term for matching: {p}')
     return matches
 
 
@@ -387,7 +382,7 @@ def get_unique_param_values(datasets, dataset_parameters):
     return param_unique_values
 
 
-def cmip7_compound_name(params):
+def cmip7_compound_name(params: dict[str, str]) -> str:
    '''
    Return CMIP7 compound name as defined in the CMIP7 Data Request.
    This name uniquely identifies a requested variable (i.e., a CMOR variable).
@@ -396,7 +391,7 @@ def cmip7_compound_name(params):
    return template.format(**params)
 
 
-def cmip7_compound_name_without_realm(params):
+def cmip7_compound_name_without_realm(params: dict[str, str]) -> str:
    '''
    Return CMIP7 compound name as defined in the CMIP7 Data Request, but excluding the realm.
    This name should uniquely identifies a requested variable (i.e., a CMOR variable) since the realm
@@ -404,6 +399,14 @@ def cmip7_compound_name_without_realm(params):
    '''
    template = '{variable_id}.{branding_suffix}.{frequency}.{region}'
    return template.format(**params)
+
+
+def branded_variable_name(params: dict[str, str]) -> str:
+    '''
+    Return CMIP7 branded variable name as defined in the CMIP7 Data Request and CMIP7 Global Attributes.
+    '''
+    template = '{variable_id}_{branding_suffix}'
+    return template.format(**params)
 
 
 def check_a4d_validation_status(datasets, validation_file):

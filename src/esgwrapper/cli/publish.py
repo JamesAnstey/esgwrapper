@@ -25,7 +25,7 @@ from esgwrapper import (CONFIG_FILES_DIR, DEFAULT_DATASETS_CONFIG_FILE,
 from esgwrapper.utils.commands import (check_env, exec_cmds, log_cmds)
 from esgwrapper.utils.esgfsearch import search, show_params, parse_file_size_str, file_size_str
 from esgwrapper.utils.log_config import init_logging
-from esgwrapper.utils.tools import (load_config_file,
+from esgwrapper.utils.tools import (load_config_file, init_filter,
                                     find_datasets, get_unique_param_values, match_params,
                                     check_a4d_validation_status,
                                     data_request_checks, get_dreq_validation_file,
@@ -284,6 +284,7 @@ def main():
         # Apply filters from the config-datasets file
         config_dat = {'keep':{}, 'exclude':{}} | config_dat
         if config_dat['keep']:
+            init_filter(config_dat['keep'])
             print('Keeping datasets with these parameter values:')
             show_params(config_dat['keep'], indent='  ')
             keep = set()
@@ -295,6 +296,7 @@ def main():
             datasets = {s: datasets[s] for s in keep}
             print(f'  --> excluded {n-len(datasets)} datasets')
         if config_dat['exclude']:
+            init_filter(config_dat['exclude'])
             print('Excluding datasets with these parameter values:')
             show_params(config_dat['exclude'], indent='  ')
             exclude = set()
