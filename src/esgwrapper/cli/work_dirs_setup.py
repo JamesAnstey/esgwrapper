@@ -192,7 +192,9 @@ def main():
                 print(f'  {esgcet_config_file}')
             if flags.write_sync_script:
                 print(f'  {SYNC_SCRIPT}')
-            if not work_dir_path.exists():
+            if work_dir_path.exists():
+                print(f'Make these changes in {work_dir_name} work dir?')
+            else:
                 print(f'Set up {work_dir_name} work dir?')
             ok = input('ENTER or "y" for yes, anything else for no: ')
         else:

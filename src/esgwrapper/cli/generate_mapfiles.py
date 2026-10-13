@@ -43,6 +43,8 @@ def parse_args():
                         help='leave the original path unaltered (ignore any path aliases)')
     parser.add_argument('-id', '--dataset-ids', type=str,
                         help='dataset ids to use: comma-separated list, or file listing datasets')
+    parser.add_argument('-ce', '--check-exists', action='store_true', default=False,
+                            help='instead of generating mapfiles, check how many already exist')
     parser.add_argument('--chksum-type', type=str, default=DEFAULT_CHKSUM_TYPE,
                         help='type of chksum to compute, default: %(default)s')
 
@@ -53,6 +55,8 @@ def main():
     args = parse_args()
     path_switch = not args.orig_path
     chksum_type = args.chksum_type
+    if args.check_exists:
+        existing_mapfiles = []
 
     date_run = datetime.now(UTC)
 
@@ -98,19 +102,27 @@ def main():
     n, k = len(datasets), 0
     time_taken = {}
     for dataset_id, info in datasets.items():
-        k += 1
-        path, filenames = info['path'], info['filenames']
-        print(f' Dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
-        logger.info(f' Dataset path: {path}')
-
-        # Example mapfile filename for CMIP7:
-        #   MIP-DRS7.CMIP7.ScenarioMIP.CCCma.CanESM5-1.esm-scen7-h.r18i1p2f1.glb.mon.wmo.tavg-ol-hxy-sea.g127.v20190429.map
 
         mapfile_subdir = mapfile_subdir_template.format(**info['params'])
         outpath = mapfile_dir / mapfile_subdir
         if not os.path.exists(outpath):
             os.makedirs(outpath)
         outfile = outpath / f'{dataset_id}.map'
+        # Example mapfile filename for CMIP7:
+        #   MIP-DRS7.CMIP7.ScenarioMIP.CCCma.CanESM5-1.esm-scen7-h.r18i1p2f1.glb.mon.wmo.tavg-ol-hxy-sea.g127.v20190429.map
+
+        if args.check_exists:
+            # Instead of generating mapfiles, just find out how many already exist.
+            # This only checks if a file of the expected name exists. It is not a check of mapfile correctness!
+            if os.path.exists(outfile):
+                existing_mapfiles.append(outfile)
+            continue
+
+        k += 1
+        path, filenames = info['path'], info['filenames']
+        print(f' Dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})')
+        logger.info(f' Dataset path: {path}')
+
         if not args.clobber and os.path.exists(outfile):
             print(f' Not overwriting existing mapfile: {outfile}')
             continue
@@ -126,7 +138,7 @@ def main():
             stat = os.stat(filepath)
             file_stat['size'] = stat.st_size
             file_stat['mod_time'] = stat.st_mtime
-            logger.info(f' {filename} ({file_size_str(file_stat["size"])})')
+            print(f' {filename} ({file_size_str(file_stat["size"])})')
             with open(filepath, 'rb') as f:
                 file_stat.update({
                     'chksum': hashlib.file_digest(f, chksum_type).hexdigest(),
@@ -151,6 +163,12 @@ def main():
         time_taken[dataset_id] = time.time() - start_time
         print(f' Time (s) for {dataset_id}: {time_taken[dataset_id]}')
         print(f' Wrote {outfile}')
+
+    if args.check_exists:
+        ne = len(existing_mapfiles)
+        assert len(set(existing_mapfiles)) == ne
+        print(f'{ne} of {n} mapfiles already exist')
+        return
 
     total_time = sum(time_taken.values())
     total_size = sum([info['size (bytes)'] for info in datasets.values()])
