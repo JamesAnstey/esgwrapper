@@ -50,6 +50,7 @@ def main():
     with open(args.input) as f:
         d = json.load(f)
         datasets = d['datasets']
+        Header = d['Header']
 
     n = len(datasets)
     total_size = 0
@@ -65,6 +66,10 @@ def main():
 
     total_size_str = file_size_str(total_size)
     msg = dedent(f'''
+    Summarizing ESGF-NG STAC search results from index={Header["index"]} ({Header["url_endpoint"]})
+    Search began at: {Header["search began at"]}
+    Search completed in: {Header["time taken for search (s)"]} s
+
     Number of datasets: {n}
     Total size: {total_size} bytes, {total_size_str}
     ''')
