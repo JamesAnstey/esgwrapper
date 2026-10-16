@@ -29,7 +29,8 @@ from esgwrapper.utils.tools import (load_config_file, init_filter,
                                     find_datasets, get_unique_param_values, match_params,
                                     check_a4d_validation_status,
                                     data_request_checks, get_dreq_validation_file,
-                                    cmip7_compound_name_without_realm)
+                                    cmip7_compound_name_without_realm,
+                                    backup_file)
 
 
 DATE_FORMAT = '%d %b %Y, %H:%M:%S UTC'
@@ -116,6 +117,10 @@ def parse_args():
     parser.add_argument('-ne', '--no-env', action='store_true', default=False,
                         help='disable environment check (user must sure correct env is activated)')
 
+    parser.add_argument('-b', '--backup', action='store_true', default=False,
+                            help='if inventory/datasets file already exists, make a backup of it before writing new one')
+    
+
     args = parser.parse_args()
 
     if any([args.__dict__[action] for action in PUBLISHING_ACTIONS]):
@@ -140,6 +145,14 @@ def main():
         inventory_file = args.inventory_file
     if args.datasets_file:
         datasets_file = args.datasets_file
+
+    if args.backup:
+        # Rename previous files if they exist, to create a backup of the previous results
+        # before they are overwritten by the new file.
+        if args.inventory:
+            backup_file(inventory_file)
+        if args.datasets:
+            backup_file(datasets_file)
 
     date_run = datetime.now(UTC)
 

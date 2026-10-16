@@ -5,11 +5,11 @@ import logging
 import numpy as np
 import os
 import stat
-import sys
+import shutil
 import yaml
 
 from collections import OrderedDict, defaultdict
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 
 import esgvoc.api as ev
@@ -38,6 +38,19 @@ def load_config_file(config_file: str | Path) -> dict:
         config = yaml.safe_load(f)
         print('Loaded ' + str(config_file))
     return config
+
+
+def backup_file(filename: str | Path):
+    if isinstance(filename, str):
+        filename = Path(filename)
+    if filename.exists():
+        stat = os.stat(filename)
+        dt = datetime.fromtimestamp(stat.st_mtime, UTC)
+        file_timestamp_date_str = dt.strftime('%d%b%Y_%H%MZ')
+        prefix = filename.with_suffix('')
+        outfile = Path(f'{prefix}_{file_timestamp_date_str}' + filename.suffix)
+        shutil.move(filename, outfile)
+        print(f'Renamed previous file {filename} to {outfile}')
 
 
 def init_filter(reference: dict[str, str | list[str]]) -> dict[str, list[str]]:
