@@ -103,6 +103,10 @@ def main():
                         data = len(dataset_ids)
                     elif table_type == 'volume':
                         data = sum([datasets[s]['size (bytes)'] for s in dataset_ids])
+
+                    # TODO: add more options for table type
+                    #   - ensemble: ensemble size, i.e. no. of variant_label's for each model+expt
+
                     else:
                         raise ValueError(f'Unknown table type: {table_type}')
                     table_data[key] = data

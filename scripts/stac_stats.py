@@ -7,12 +7,36 @@ import argparse
 import json
 
 from collections import defaultdict, OrderedDict
+from pathlib import Path
 from textwrap import dedent
 
 from esgwrapper import CONFIG_FILES_DIR
 from esgwrapper.utils.esgfsearch import file_size_str
+from esgwrapper.utils.tools import load_config_file
+
 
 VALIDATION_FILE = CONFIG_FILES_DIR / 'validation_info' / 'validation_status.json'
+
+
+PARAMS_MAP = {
+    'cmip7': OrderedDict({
+        "project": "project",
+        "cmip7:drs_specs": "drs_specs",
+        "cmip7:mip_era": "mip_era",
+        "cmip7:activity_id": "activity_id",
+        "cmip7:institution_id": "institution_id",
+        "cmip7:source_id": "source_id",
+        "cmip7:experiment_id": "experiment_id",
+        "cmip7:variant_label": "variant_label",
+        "cmip7:region": "region",
+        "cmip7:frequency": "frequency",
+        "cmip7:variable_id": "variable_id",
+        "cmip7:variable_branding_suffix": "branding_suffix",
+        "cmip7:grid_label": "grid_label",
+        "version": "version"
+    })
+}
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -26,8 +50,11 @@ def parse_args():
                         help='display stats by model')
     parser.add_argument('-v', '--validation', type=str, default=VALIDATION_FILE,
                         help='json file with variable validation statuses to check against published variables')
+    parser.add_argument('-i', '--inventory', action='store_true',
+                        help='save results in the same json format as inventory.json')
 
     return parser.parse_args()
+
 
 def cmip7_compound_name_from_stac_dataset(info):
     template = '{realm}.{variable_id}.{branding_suffix}.{frequency}.{region}'
@@ -39,6 +66,17 @@ def cmip7_compound_name_from_stac_dataset(info):
         'region': info['properties']['cmip7:region'],
     }
     return template.format(**params)
+
+
+def convert_stac_params(info: dict) -> dict:
+    project = info['properties']['project'].lower()
+    map = PARAMS_MAP[project]
+    params = {map[attr]: info['properties'][attr] for attr in map}
+    params['project'] = params['project'].lower()
+    if not params['version'].startswith('v'):
+        params['version'] = 'v' + params['version']
+    return params
+
 
 def main():
     args = parse_args()
@@ -145,7 +183,6 @@ def main():
         models_checked = ', '.join(sorted(variable_status.keys()))
         print(f'Models checked for validation statuses: {models_checked}')
 
-
         if len(published_unapproved) > 0:
             # Variables that were published but are not recorded as approved in the validation database
             nv = len(published_unapproved)
@@ -214,6 +251,50 @@ def main():
         if len(other_models) > 0:
             models_not_checked = ', '.join(sorted(other_models))
             print(f'These models were found in the search but have no validation status available:\n  {models_not_checked}')
+
+
+    if args.inventory:
+        datasets_out = OrderedDict({})
+        dataset_ids = sorted(datasets.keys(), key=str.lower)
+        config_pub = load_config_file(CONFIG_FILES_DIR / 'config-publisher.yaml')
+        for dataset_id in dataset_ids:
+            stac_dataset_info = datasets[dataset_id]
+            # Get dataset DRS attributes, and convert the names to the exact Global Attribute names
+            params = convert_stac_params(stac_dataset_info)
+            # Confirm it worked be reconstructing the dataset_id
+            project = params['project']
+            dataset_template = config_pub['DRS'][project]['dataset']
+            assert dataset_template.format(**params) == dataset_id
+
+            filenames = set()
+            dataset_size = 0
+            for filename, info in stac_dataset_info['assets'].items():
+                # Check asset type in case a dataset has other assets besides netcdf files
+                if not info['type'] == "application/netcdf":
+                    continue
+                assert filename.endswith('.nc'), f'Unexpected filename: {filename}'
+                filenames.add(filename)
+                dataset_size += info['file:size']
+            assert len(filenames) > 0, f'No netcdf files for dataset {dataset_id}'
+            datasets_out[dataset_id] = OrderedDict({
+                'params': params,
+                'no. of files': len(filenames),
+                'filenames': sorted(filenames, key=str.lower),
+                'size (bytes)': dataset_size,
+                'size (human readable)': file_size_str(dataset_size)
+            })
+        out = OrderedDict({
+            'Header': OrderedDict({
+                'stac_search': Header
+            }),
+            'datasets': datasets_out
+        })
+        input_file = Path(args.input)
+        outfile = f'inventory_{input_file.stem}.json'
+        with open(outfile, 'w') as f:
+            json.dump(out, f, indent=4)
+            print(f'Wrote {outfile}')
+
 
 if __name__ == '__main__':
     main()
