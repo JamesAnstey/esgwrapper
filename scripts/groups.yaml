@@ -1,0 +1,18 @@
+
+groupings:
+  # Group names are arbitrary, but can be referred to for filters and tables
+
+  model_expt:
+  - source_id
+  - experiment_id
+
+  freq:
+  - frequency
+
+tables:
+  - row: model_expt
+    column: freq
+    show: 
+    - datasets
+    - volume
+
