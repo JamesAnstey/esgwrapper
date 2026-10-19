@@ -35,6 +35,7 @@ server_sync = "esgwrapper.cli.server_sync:main"
 publish = "esgwrapper.cli.publish:main"
 summarize = "esgwrapper.cli.summarize:main"
 get_file_stats = "esgwrapper.cli.get_file_stats:main"
+groupby = "esgwrapper.cli.groupby:main"
 
 #[tool.setuptools]
 #package-dir = {"" = "esgwrapper"}
