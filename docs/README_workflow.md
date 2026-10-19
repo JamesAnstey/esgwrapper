@@ -1,10 +1,5 @@
 # esgwrapper
 
-Wrapper for [ESGF publishing software](https://esg-publisher.readthedocs.io/en/main/) that finds publishable datasets and loops over publishing commands.
-
-General documentation on how to publish to ESGF at CCCma can be [found here](https://gitlab.science.gc.ca/CCCma/cccma_data_publishing/-/blob/master/docs/README_ESGF_publishing.md).
-
-
 ### Installation
 
 ⚠️ TODO: clarify science-side and server-side setup.
@@ -18,7 +13,7 @@ pip install --upgrade pip
 Then (still in the activated venv) go to directory where the software and work dirs will live and install it:
 ```bash
 cd /datalocal/home/scrd106/esgf_publishing/cmip7  # this is server path, but can install on science as well
-git clone git@github.com:JamesAnstey/esgwrapper.git  # skip if it's already cloned
+git clone git@github.com:JamesAnstey/esgwrapper.git
 cd esgwrapper
 python -m pip install -e .
 ```
@@ -60,7 +55,7 @@ paths:  # all the top-level paths in which to search for datasets
 ```
 The work dir will also have a `mapfiles/` dir to keep all mapfiles, and a `logs/` dir where output from publishing commands will be logged.
 
-TODO: document these steps that are run in a work dir:
+⚠️ TODO: document these steps that are run in a work dir:
 
 - `publish -i -b`: generate inventory file `inventory.json`
 - `generate_mapfiles datasets.json mapfiles -ce`: check to mapfile existence, then re-run without `-ce` to generate any missing mapfiles (can also run on `inventory.json`) (noting mapfile generation is MUCH faster on science than on the server)
@@ -80,3 +75,7 @@ Logfiles in the work dir's `logs` dir will indicate the results of the various k
 -rw-r--r-- 1 scrd106 eccc_ccrn_shr  61K Oct 19 02:08 datasets_2026.10.19_02.06.32_UTC.log
 -rw-r--r-- 1 scrd106 eccc_ccrn_shr  54K Oct 19 04:21 publish_2026.10.19_02.12.17_UTC.log
 ```
+
+### Further info
+
+General documentation on how to publish to ESGF at CCCma can be [found here](https://gitlab.science.gc.ca/CCCma/cccma_data_publishing/-/blob/master/docs/README_ESGF_publishing.md).
