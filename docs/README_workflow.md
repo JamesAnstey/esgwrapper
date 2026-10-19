@@ -2,7 +2,7 @@
 
 ### Installation
 
-⚠️ TODO: clarify science-side and server-side setup.
+⚠️ TODO: clarify science-side vs. server-side setup.
 
 Create a venv into which the software will be installed:
 ```bash
@@ -75,7 +75,3 @@ Logfiles in the work dir's `logs` dir will indicate the results of the various k
 -rw-r--r-- 1 scrd106 eccc_ccrn_shr  61K Oct 19 02:08 datasets_2026.10.19_02.06.32_UTC.log
 -rw-r--r-- 1 scrd106 eccc_ccrn_shr  54K Oct 19 04:21 publish_2026.10.19_02.12.17_UTC.log
 ```
-
-### Further info
-
-General documentation on how to publish to ESGF at CCCma can be [found here](https://gitlab.science.gc.ca/CCCma/cccma_data_publishing/-/blob/master/docs/README_ESGF_publishing.md).
