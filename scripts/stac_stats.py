@@ -76,7 +76,9 @@ def main():
     print(msg)
 
     if get_model_stats:
-        for model, stats in model_stats.items():
+        models = sorted(model_stats, key=str.lower)
+        for model in models:
+            stats = model_stats[model]
             total_size = stats['total size']
             total_size_str = file_size_str(total_size)
             n = stats['no. datasets']
