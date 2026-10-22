@@ -7,8 +7,10 @@ from collections import OrderedDict, defaultdict
 from pathlib import Path
 from tabulate import tabulate
 
+from esgwrapper import CONFIG_FILES_DIR
 from esgwrapper.utils.esgfsearch import file_size_str, show_params
-from esgwrapper.utils.tools import load_config_file, init_filter, match_params
+from esgwrapper.utils.tools import (load_config_file, init_filter, match_params,
+                                    cmip7_compound_name_without_realm)
 
 
 def parse_args():
@@ -21,7 +23,14 @@ def parse_args():
                         help='file listing datasets, json (keyed by dataset_id) or txt (dataset_id list)')
     parser.add_argument('config', type=str,
                         help='yaml file specifying the metadata attributes to group by, filters, and tables')
-    
+
+    parser.add_argument('-vars', '--variables', type=str,
+                        help='for -d, json file listing compound names of variables to keep' +
+                        ' (applied before all other filtering options)')
+    parser.add_argument('-core', '--BCVs', action='store_true', default=False,
+                        help='shorthand for applying the -vars option with the list of BCVs' +
+                        ' (Baseline Climate Variables, the Core priority variables of the CMIP7 DR)')
+
     return parser.parse_args()
 
 
@@ -58,6 +67,37 @@ def main():
         vol = sum([datasets[s]['size (bytes)'] for s in datasets])
         print(f'Number of datasets: {n}')
         print(f'Total volume: {file_size_str(vol)} ({vol} bytes)')
+
+    # Restrict to a specified list of variables, if desired
+    variables_file = args.variables
+    if args.BCVs:
+        # Shorthand for using the CMIP7 BCVs variables list in the config.
+        # If user passed a filename via args.variables, this overrides it.
+        variables_file = CONFIG_FILES_DIR / 'variables_info' / 'BCVs.json'
+    if variables_file:
+        with open(variables_file) as f:
+            var_names = json.load(f)['Compound Name']
+        # "realm" is not available from the inventory.
+        # It's not required as part of the unique variable name in CMIP7, so prune it.
+        var_names_no_realm = [s.partition('.')[-1] for s in var_names]
+        # Confirm that this doesn't violate the uniqueness assumption
+        assert len(set(var_names_no_realm)) == len(set(var_names))
+        keep_var_names = var_names_no_realm
+        keep_datasets = set()
+        keep_variables = set()
+        exclude_variables = set()
+        for dataset_id, info in datasets.items():
+            var_name = cmip7_compound_name_without_realm(info['params'])
+            if var_name in keep_var_names:
+                keep_datasets.add(dataset_id)
+                keep_variables.add(var_name)
+            else:
+                exclude_variables.add(var_name)
+        n = len(datasets)
+        datasets = {s: datasets[s] for s in keep_datasets}
+        print(f'Retaining only variables listed in {variables_file}')
+        print(f'  --> excluded {len(exclude_variables)} variable ({n-len(datasets)} datasets)')
+        print(f'  --> kept {len(keep_variables)} variables ({len(datasets)} datasets)')
 
     # Filter datasets.
     config = {'keep':{}, 'exclude':{}} | config

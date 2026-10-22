@@ -105,6 +105,14 @@ def match_params(params: dict[str, str], reference: dict[str, list[str]]) -> dic
             # Example: pr.tavg-u-hxy-u.3hr.glb
             var_name = cmip7_compound_name_without_realm(params)
             matches[p] = var_name in values
+        elif p == 'cmip7_compound_name':
+            # As 'cmip7_compound_name_without_realm', but allowing user to pass compound names that
+            # do include the realm. The realm is trimmed from the values and then compared to the
+            # compound name without the realm.
+            # The realm should not affect the unique of names, so trimming it should be safe to do.
+            values = [s.partition('.')[-1] for s in values]
+            var_name = cmip7_compound_name_without_realm(params)
+            matches[p] = var_name in values
         elif p == 'variable_name_from_dataset_id':
             # Match on variable name with same info as CMIP7 compound name (minus realm) but in the
             # order the parameters appear in a dataset_id. Example: glb.3hr.pr.tavg-u-hxy-u
