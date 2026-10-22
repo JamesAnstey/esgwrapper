@@ -36,6 +36,9 @@ publish = "esgwrapper.cli.publish:main"
 summarize = "esgwrapper.cli.summarize:main"
 get_file_stats = "esgwrapper.cli.get_file_stats:main"
 groupby = "esgwrapper.cli.groupby:main"
+search_stac = "esgwrapper.cli.search_stac:main"
+stac_stats = "esgwrapper.cli.stac_stats:main"
+
 
 #[tool.setuptools]
 #package-dir = {"" = "esgwrapper"}
