@@ -51,7 +51,7 @@ def parse_args():
     parser.add_argument('-v', '--validation', type=str, default=VALIDATION_FILE,
                         help='json file with variable validation statuses to check against published variables')
     parser.add_argument('-i', '--inventory', action='store_true',
-                        help='save results in the same json format as inventory.json')
+                        help='save results in the same json format as inventory.json (does not overwrite input file)')
 
     return parser.parse_args()
 
@@ -275,7 +275,9 @@ def main():
                 assert filename.endswith('.nc'), f'Unexpected filename: {filename}'
                 filenames.add(filename)
                 dataset_size += info['file:size']
-            assert len(filenames) > 0, f'No netcdf files for dataset {dataset_id}'
+            # assert len(filenames) > 0, f'No netcdf files for dataset {dataset_id}'
+            if len(filenames) == 0:
+                print(f'No netcdf files for dataset {dataset_id}')
             datasets_out[dataset_id] = OrderedDict({
                 'params': params,
                 'no. of files': len(filenames),

@@ -7,8 +7,8 @@ from collections import OrderedDict, defaultdict
 from pathlib import Path
 from tabulate import tabulate
 
-from esgwrapper.utils.esgfsearch import file_size_str
-from esgwrapper.utils.tools import load_config_file
+from esgwrapper.utils.esgfsearch import file_size_str, show_params
+from esgwrapper.utils.tools import load_config_file, init_filter, match_params
 
 
 def parse_args():
@@ -23,6 +23,16 @@ def parse_args():
                         help='yaml file specifying the metadata attributes to group by, filters, and tables')
     
     return parser.parse_args()
+
+
+def file_size_str_for_table(data):
+    '''
+    If size is zero, show "-" instead of "0 B" because it makes the table easier to read.
+    '''
+    if data == 0:
+        return '-'
+    else:
+        return file_size_str(data)
 
 
 def main():
@@ -42,14 +52,39 @@ def main():
         raise ValueError('TODO: support .txt input')
         # convert txt file listing dataset_id's into attr:value dict for each dataset (like json input above)
 
-    # TODO: if input is STAC search, convert map attr names, activate w/ '-stac' option
-
     SHOW_DATASETS_SUMMARY = True
     if SHOW_DATASETS_SUMMARY:
         n = len(datasets)
         vol = sum([datasets[s]['size (bytes)'] for s in datasets])
         print(f'Number of datasets: {n}')
         print(f'Total volume: {file_size_str(vol)} ({vol} bytes)')
+
+    # Filter datasets.
+    config = {'keep':{}, 'exclude':{}} | config
+    if config['keep']:
+        init_filter(config['keep'])
+        print('Keeping datasets with these parameter values:')
+        show_params(config['keep'], indent='  ')
+        keep = set()
+        for dataset_id, info in datasets.items():
+            matches = match_params(info['params'], config['keep'])
+            if all(matches.values()):
+                keep.add(dataset_id)
+        n = len(datasets)
+        datasets = {s: datasets[s] for s in keep}
+        print(f'  --> excluded {n-len(datasets)} datasets')
+    if config['exclude']:
+        init_filter(config['exclude'])
+        print('Excluding datasets with these parameter values:')
+        show_params(config['exclude'], indent='  ')
+        exclude = set()
+        for dataset_id, info in datasets.items():
+            matches = match_params(info['params'], config['exclude'])
+            if any(matches.values()):
+                exclude.add(dataset_id)
+        n = len(datasets)
+        datasets = {s: datasets[s] for s in datasets if s not in exclude}
+        print(f'  --> excluded {n-len(datasets)} datasets')
 
     # Determine the list of dataset id's that belong to each grouping.
     dataset_groups = {}
@@ -75,7 +110,10 @@ def main():
             for group_id, dataset_ids in groups.items():
                 print(f'  {group_id}: {len(dataset_ids)}')
 
+
     # TODO: save groups to output files? (useful?)
+
+
 
     # Make tables
     for table in config['tables']:
@@ -106,6 +144,7 @@ def main():
 
                     # TODO: add more options for table type
                     #   - ensemble: ensemble size, i.e. no. of variant_label's for each model+expt
+                    #   - % volume: as volume, but show as percent of total (total over full table, i.e. rows + columns)
 
                     else:
                         raise ValueError(f'Unknown table type: {table_type}')
@@ -123,16 +162,16 @@ def main():
                     row_sum += data
                     col_sum[k] += data
                     if table_type == 'volume':
-                        data = file_size_str(data)  # convert number of bytes to human-readable string
+                        data = file_size_str_for_table(data)  # convert number of bytes to human-readable string
                     row.append(data)
                 if table_type == 'volume':
-                    row_sum = file_size_str(row_sum)
+                    row_sum = file_size_str_for_table(row_sum)
                 row.append(row_sum)
                 rows.append(row)
             total_sum = sum(col_sum)  # sum over all rows and columns, i.e. all data in the table
             col_sum.append(total_sum)
             if table_type == 'volume':
-                col_sum = [file_size_str(m) for m in col_sum]
+                col_sum = [file_size_str_for_table(m) for m in col_sum]
             col_sum = ['TOTAL:'] + col_sum
             rows.append(col_sum)
             print(f'\nTable: {table_type}, Axes: {table["row"]} vs {table["column"]}')
