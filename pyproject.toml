@@ -38,6 +38,7 @@ get_file_stats = "esgwrapper.cli.get_file_stats:main"
 groupby = "esgwrapper.cli.groupby:main"
 search_stac = "esgwrapper.cli.search_stac:main"
 stac_stats = "esgwrapper.cli.stac_stats:main"
+subset_stac = "esgwrapper.cli.subset_stac:main"
 
 
 #[tool.setuptools]
