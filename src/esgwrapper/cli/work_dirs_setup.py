@@ -120,6 +120,17 @@ def main():
         # Set up only one dir, using the common parameters set
         config_wrk['separate_work_dirs'] = [{}]
 
+    if 'broadcast_inventory' in config_wrk:
+        # Added this in order to easily update work dirs for multiple activities at once
+        new_work_dir_list = []
+        for d in config_wrk['separate_work_dirs']:
+            for bi in config_wrk['broadcast_inventory']:
+                d = deepcopy(d)
+                d['inventory'].update(bi)
+                new_work_dir_list.append(d)
+        config_wrk['separate_work_dirs'] = new_work_dir_list
+        del new_work_dir_list
+
     # Determine parameter set for each work dir
     work_dirs = []
     for d in config_wrk['separate_work_dirs']:
@@ -128,6 +139,7 @@ def main():
         work_dirs.append(wrk)
 
     # Set up work dirs
+    print(f'Updates requested for {len(work_dirs)} work dirs')
     for wrk in work_dirs:
 
         # Translate inventory parameters into DRS paths
