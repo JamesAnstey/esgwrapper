@@ -9,10 +9,18 @@ groupings:
   freq:
   - frequency
 
+keep:
+  # frequency:
+  # - mon
+  # - day
+
+exclude:
+#   experiment_id:
+#   - hist-nat
+
 tables:
   - row: model_expt
     column: freq
     show: 
     - datasets
     - volume
-

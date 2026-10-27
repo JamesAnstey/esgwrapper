@@ -6,6 +6,7 @@ import json
 from collections import OrderedDict, defaultdict
 from pathlib import Path
 from tabulate import tabulate
+from textwrap import dedent
 
 from esgwrapper import CONFIG_FILES_DIR
 from esgwrapper.utils.esgfsearch import file_size_str, show_params
@@ -21,9 +22,9 @@ def parse_args():
 
     parser.add_argument('input', type=str,
                         help='file listing datasets, json (keyed by dataset_id) or txt (dataset_id list)')
-    parser.add_argument('config', type=str,
-                        help='yaml file specifying the metadata attributes to group by, filters, and tables')
 
+    parser.add_argument('-c', '--config', type=str, default='groups.yaml',
+                        help='yaml file specifying the metadata attributes to group by, filters, and tables; if not found, default file will be created: %(default)s')
     parser.add_argument('-vars', '--variables', type=str,
                         help='for -d, json file listing compound names of variables to keep' +
                         ' (applied before all other filtering options)')
@@ -46,6 +47,13 @@ def file_size_str_for_table(data):
 
 def main():
     args = parse_args()
+
+    config_file = Path(args.config)
+    if not config_file.exists():
+        # Copy a default config file into the current dir
+        default_config_file = CONFIG_FILES_DIR / 'groupby' / 'groups.yaml'
+        config_file.write_text(default_config_file.read_text())
+        print(f'Wrote default config file: {config_file}')
 
     # Load config file specifying the dataset groupings, filters, and tables.
     config = load_config_file(args.config)
