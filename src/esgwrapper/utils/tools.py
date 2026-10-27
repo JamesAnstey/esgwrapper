@@ -270,7 +270,11 @@ def _get_file_times(project: str, dataset_files: list[str]) -> np.array:
     return year_ranges
 
 
-def _check_dataset_years(project: str, dataset_files: list[str], params: dict) -> dict:
+def _check_dataset_years(project: str,
+                         dataset_files: list[str],
+                         params: dict,
+                         config_expt: dict = None
+                         ) -> dict:
     '''
     Validate the years indicated by a dataset's filenames span the expected range of
     years, or minimum number of years, for the experiment.
@@ -297,19 +301,29 @@ def _check_dataset_years(project: str, dataset_files: list[str], params: dict) -
             expt = params['experiment_id']
             cv_info = ev.get_term_in_collection(project_id=project, collection_id='experiment', term_id=expt.lower())
             assert expt == cv_info.drs_name, f'Unexpected DRS name for experiment {expt}: {cv_info.drs_name}'
+            expt_info = {
+                # Info from CVs that will be used to check the dataset's time range. 
+                # If any of these are None, that check will be skipped.
+                'start_timestamp': cv_info.start_timestamp,
+                'end_timestamp': cv_info.end_timestamp,
+                'min_number_yrs_per_sim': cv_info.min_number_yrs_per_sim
+            }
+            if expt in config_expt:
+                # If the user has specified any of these in the config_expt, override the CVs.
+                expt_info.update(config_expt[expt])
 
             dataset_start_year = year_ranges[0,0]
             dataset_end_year = year_ranges[-1,-1]
             dataset_total_years = dataset_end_year - dataset_start_year + 1
             check = []
-            if cv_info.start_timestamp:
+            if expt_info['start_timestamp']:
                 # Check that dataset begins in the start year specified in the CVs.
-                dt_start = cv_info.start_timestamp
+                dt_start = expt_info['start_timestamp']
                 check.append(dataset_start_year == dt_start.year)
                 if not check[-1]:
                     logger.info(f' dataset starts in year {dataset_start_year}, '
                                 f'but should start in year={dt_start.year}')
-            if cv_info.end_timestamp:
+            if expt_info['end_timestamp']:
                 # Check that dataset ends in the end year specified in the CVs, or ends in the
                 # year following that.
                 #
@@ -317,16 +331,16 @@ def _check_dataset_years(project: str, dataset_files: list[str], params: dict) -
                 # first time of the calendar year following the end year of an experiment, for example:
                 #   vas_tpt-h10m-hxy-u_3hr_glb_g150_CanESM6-0-MR_historical_r12i1p1f1_202101010300-202201010000.nc
                 # where the CMIP7 historical experiment ends at the end of 2021.
-                dt_end = cv_info.end_timestamp
+                dt_end = expt_info['end_timestamp']
                 check.append(dataset_end_year == dt_end.year or dataset_end_year == dt_end.year + 1)
                 if not check[-1]:
                     logger.info(f' dataset ends in year {dataset_end_year}, '
                                 f'but should end in year={dt_end.year}')
-            if cv_info.min_number_yrs_per_sim:
-                check.append(dataset_total_years >= cv_info.min_number_yrs_per_sim)
+            if expt_info['min_number_yrs_per_sim']:
+                check.append(dataset_total_years >= expt_info['min_number_yrs_per_sim'])
                 if not check[-1]:
                     logger.info(f' dataset has {dataset_total_years} years, '
-                                f'minimum number of years={cv_info.min_number_yrs_per_sim}')
+                                f'minimum number of years={expt_info["min_number_yrs_per_sim"]}')
             if len(check) == 0:
                 raise ValueError(f'No dataset time range checks were applied, is the needed info in the CVs?')
             return all(check)
@@ -340,6 +354,7 @@ def find_datasets(project: str,
                   dataset_template: str,
                   path_template: str,
                   file_template: str,
+                  config_expt: dict = None,
                   ) -> dict:
     '''
     Walk directory to find datasets and gather info about them.
@@ -401,7 +416,7 @@ def find_datasets(project: str,
             if len(dataset_files) == 0:
                 logger.info(f' no valid dataset files were found')
                 reject_dataset = True
-            if not _check_dataset_years(project, dataset_files, params):
+            if not _check_dataset_years(project, dataset_files, params, config_expt):
                 # If dataset does not contain all expected years, reject it
                 logger.info(f' failed time range checks (see above for why)')
                 reject_dataset = True

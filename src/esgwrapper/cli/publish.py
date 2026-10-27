@@ -175,6 +175,14 @@ def main():
     config_pub = load_config_file(CONFIG_FILES_DIR / 'config-publisher.yaml')
     dataset_template = config_pub['DRS'][project]['dataset']
 
+    # Load optional experiments config file, if provided
+    expts_config_file = Path('config-experiment.yaml')
+    if expts_config_file.exists():
+        config_expt = load_config_file(expts_config_file)
+        print(f'Loaded experiment config file: {expts_config_file}')
+    else:
+        config_expt = {}
+
     # Decide if existing mapfiles can be overwritten
     if args.mapfile_clobber:
         mapfile_clobber = True
@@ -204,7 +212,8 @@ def main():
                 print('Searching path (relative to base path): ' + dataset_path)
                 d = find_datasets(project,
                                   base_path, dataset_path,
-                                  dataset_template, path_template, file_template)
+                                  dataset_template, path_template, file_template,
+                                  config_expt)
                 datasets.update(d)
                 del d
 
