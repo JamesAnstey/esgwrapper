@@ -222,6 +222,12 @@ def main():
                 col_sum = [file_size_str_for_table(m) for m in col_sum]
             col_sum = ['TOTAL:'] + col_sum
             rows.append(col_sum)
+            # Replace zeros with "-" for easier reading of the table
+            for row in rows:
+                for k, col in enumerate(row):
+                    if isinstance(col, int) and col == 0:
+                        row[k] = '-'
+            # Print table to stdout
             print(f'\nTable: {table_type}, Axes: {table["row"]} vs {table["column"]}')
             print(tabulate(rows, headers=headers))
 
