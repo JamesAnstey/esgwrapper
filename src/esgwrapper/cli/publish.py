@@ -119,6 +119,9 @@ def parse_args():
 
     parser.add_argument('-b', '--backup', action='store_true', default=False,
                             help='if inventory/datasets file already exists, make a backup of it before writing new one')
+
+    parser.add_argument('-ecf', '--esgcet-config-file', type=str,
+                        help='override default publisher config file for publishing (default is set in config-publisher.yaml)')
     
 
     args = parser.parse_args()
@@ -689,6 +692,8 @@ def main():
                 'mapfile': os.path.normpath(os.path.join(mapfile_path, mapfile)),
                 'esgcet_config_file': config_pub['publish']['esgcet_config_file']
             }
+            if args.esgcet_config_file:
+                cmd_args['esgcet_config_file'] = args.esgcet_config_file
             if not os.path.exists(cmd_args['mapfile']):
                 print('Mapfile not found: ' + cmd_args['mapfile'])
                 continue
