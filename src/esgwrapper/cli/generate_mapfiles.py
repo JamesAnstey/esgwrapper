@@ -20,7 +20,8 @@ from esgwrapper.utils.log_config import init_logging
 
 
 PATH_SWITCH = {
-    '/space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP7/final': '/CCCMA_NFS/esg/esg_ng'
+    '/space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP7/final': '/CCCMA_NFS/esg/esg_ng',
+    '/space/hall7/sitestore/eccc/crd/cccma/model_output/CMIP6Plus/final': '/CCCMA_NFS/esg/esg_ng'
 }
 DEFAULT_CHKSUM_TYPE = 'sha256'
 
