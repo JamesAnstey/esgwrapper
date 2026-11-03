@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-Use STAC API via pystac_client to search ESGF for published CMIP7 datasets
+Use STAC API via pystac_client to search ESGF-NG for published datasets
 '''
 
 import argparse
@@ -11,6 +11,8 @@ from copy import deepcopy
 from datetime import datetime, UTC
 from pystac_client import Client
 # https://pystac-client.readthedocs.io/en/stable/
+
+from esgwrapper import STAC_COLLECTION
 
 
 def parse_args():
@@ -25,6 +27,10 @@ def parse_args():
 
     parser.add_argument('-a', '--all', action='store_true',
                         help='return whole catalogue')
+    parser.add_argument('-p', '--project', type=str, default='cmip7', choices=['cmip7', 'cmip6plus'],
+                        help='project to search')
+    parser.add_argument('-m', '--models', type=str, default='CanESM5-1,CanESM6-0-MR',
+                        help='comma-separated list of models to search for')
 
     args = parser.parse_args()
     return args
@@ -33,16 +39,18 @@ def main():
 
     args = parse_args()
     index = args.index
+    project = args.project
 
     date_str = datetime.now(UTC).strftime('%d %b %Y, %H:%M:%S UTC')
     print(f'Starting ESGF search {date_str}')
     time_taken = time.time() 
 
-    base_query = {"collections": ["CMIP7"]}
+    base_query = {"collections": [STAC_COLLECTION[project]]}
 
-    models = []
-    models.append('CanESM5-1')
-    models.append('CanESM6-0-MR')
+    # models = []
+    # models.append('CanESM5-1')
+    # models.append('CanESM6-0-MR')
+    models = args.models.split(',')
 
     if args.all:
         # hack
@@ -57,7 +65,7 @@ def main():
         query = deepcopy(base_query)
         query.update({
             "query": {
-                "cmip7:source_id": {"eq": model},
+                f"{project}:source_id": {"eq": model},
 
                 # "cmip7:experiment_id": {"eq": "piControl"},
                 # "cmip7:variable_id": {"eq": "tas"},
@@ -99,7 +107,7 @@ def main():
         outfile_prefix = 'stac_found_all'
 
     # Output txt file listing dataset ids
-    outfile = f'{outfile_prefix}_{index}.txt'
+    outfile = f'{outfile_prefix}_{index}_{project}.txt'
     w = '\n'.join(sorted(datasets, key=str.lower))
     with open(outfile, 'w') as f:
         f.write(w)
@@ -121,7 +129,7 @@ def main():
         }),
         'datasets': datasets
     })
-    outfile = f'{outfile_prefix}_{index}.json'
+    outfile = f'{outfile_prefix}_{index}_{project}.json'
     with open(outfile, 'w') as f:
         json.dump(out, f, indent=4)
         print(f'Wrote {outfile} with info on {len(datasets)} datasets found on {index}')

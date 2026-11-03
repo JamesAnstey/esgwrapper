@@ -15,3 +15,8 @@ DEFAULT_DATASETS_FILE = 'datasets.json'
 DEFAULT_INVENTORY_FILE = 'inventory.json'
 
 SEND_STDOUT_TO_LOGFILE = True
+
+STAC_COLLECTION = {
+    'cmip7': 'CMIP7',
+    'cmip6plus': 'CMIP6Plus'
+}

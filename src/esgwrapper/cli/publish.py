@@ -21,7 +21,8 @@ from pystac_client import Client
 from textwrap import dedent
 
 from esgwrapper import (CONFIG_FILES_DIR, DEFAULT_DATASETS_CONFIG_FILE,
-                        DEFAULT_DATASETS_FILE, DEFAULT_INVENTORY_FILE)
+                        DEFAULT_DATASETS_FILE, DEFAULT_INVENTORY_FILE,
+                        STAC_COLLECTION)
 from esgwrapper.utils.commands import (check_env, exec_cmds, log_cmds)
 from esgwrapper.utils.esgfsearch import search, show_params, parse_file_size_str, file_size_str
 from esgwrapper.utils.log_config import init_logging
@@ -55,10 +56,6 @@ PUBLISHING_ACTIONS = OrderedDict({
         'help': 'publish to ESGF'
     },
 })
-STAC_COLLECTION = {
-    'cmip7': 'CMIP7',
-    'cmip6plus': 'CMIP6Plus'
-}
 
 
 def parse_args():
