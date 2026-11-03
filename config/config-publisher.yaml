@@ -11,6 +11,7 @@ mapfile:
   mapfile_subdir: 
     #cmip7: '{drs_specs}/{mip_era}/{activity_id}/{institution_id}/{source_id}/{experiment_id}/{variant_label}'
     cmip7: ''
+    cmip6plus: ''
   clobber: False
 
 publish:
