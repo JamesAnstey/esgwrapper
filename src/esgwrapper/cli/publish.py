@@ -55,6 +55,10 @@ PUBLISHING_ACTIONS = OrderedDict({
         'help': 'publish to ESGF'
     },
 })
+STAC_COLLECTION = {
+    'cmip7': 'CMIP7',
+    'cmip6plus': 'CMIP6Plus'
+}
 
 
 def parse_args():
@@ -490,7 +494,7 @@ def main():
                 for source_id in param_unique_values['source_id']:
                     for experiment_id in param_unique_values['experiment_id']:
                         query = {
-                            'collections': [project.upper()],
+                            'collections': [STAC_COLLECTION[project]],
                             'query': {
                                 f'{project}:source_id': {"eq": source_id},
                                 f'{project}:experiment_id': {"eq": experiment_id},

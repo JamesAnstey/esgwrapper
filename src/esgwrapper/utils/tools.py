@@ -27,6 +27,9 @@ TIME_STR_FORMAT_BY_LENGTH = {
     12: '%Y%m%d%H%M', # example: '202201010300'
 }
 
+FX_CMIP7_FREQUENCY = ['fx']
+FX_CMIP6PLUS_TABLE_ID = ['APfx', 'LPfx', 'OPfx']
+
 
 def load_config_file(config_file: str | Path) -> dict:
     '''
@@ -191,7 +194,15 @@ def _validate_dataset_filename(project: str,
         assert file_template_noext.endswith('_{timeRangeDD}'), \
             f'Unexpected file_template for {project}: {file_template}'
         file_template_notime = file_template_noext.rpartition('_')[0]
-        if params['frequency'] == 'fx':
+        if params['frequency'] in FX_CMIP7_FREQUENCY:
+            filename_notime = filename_noext
+        else:
+            filename_notime = filename_noext.rpartition('_')[0]
+    elif project == 'cmip6plus':
+        assert file_template_noext.endswith('_{timeRangeDD}'), \
+            f'Unexpected file_template for {project}: {file_template}'
+        file_template_notime = file_template_noext.rpartition('_')[0]
+        if params['table_id'] in FX_CMIP6PLUS_TABLE_ID:
             filename_notime = filename_noext
         else:
             filename_notime = filename_noext.rpartition('_')[0]
@@ -253,7 +264,7 @@ def _validate_year_ranges(year_ranges: np.array) -> bool:
 def _get_file_times(project: str, dataset_files: list[str]) -> np.array:
     year_ranges = np.zeros((len(dataset_files),2))
     year_ranges.fill(np.nan)
-    if project == 'cmip7':
+    if project in ['cmip7', 'cmip6plus']:
         # dataset_files is assumed to be sorted from earliest to latest times
         for k,filename in enumerate(dataset_files):
             filename, ext = os.path.splitext(filename)
@@ -286,8 +297,9 @@ def _check_dataset_years(project: str,
     check = {}
     if len(dataset_files) == 0:
         return False
+    
     if project == 'cmip7':
-        if params['frequency'] == 'fx':
+        if params['frequency'] in FX_CMIP7_FREQUENCY:
             # For fixed fields (with no time dimension), this check is irrelevant
             return True
         else:
@@ -344,6 +356,63 @@ def _check_dataset_years(project: str,
             if len(check) == 0:
                 raise ValueError(f'No dataset time range checks were applied, is the needed info in the CVs?')
             return all(check)
+        
+    elif project == 'cmip6plus':
+        # Essentially the same checks as for CMIP7, but with the minor adjustements required for CMIP6Plus nomenclature.
+        if params['table_id'] in FX_CMIP6PLUS_TABLE_ID:
+            # For fixed fields (with no time dimension), this check is irrelevant
+            return True
+        else:
+            year_ranges = _get_file_times(project, dataset_files)
+            if not _validate_year_ranges(year_ranges):
+                # Failure here indicates the dataset years are not contiguous, i.e. there are time gaps.
+                logger.info(f' dataset has year gaps')
+                return False
+            # Get info from CVs about time range of the experiment
+            expt = params['experiment_id']
+            cv_info = ev.get_term_in_collection(project_id=project, collection_id='experiment_id', term_id=expt.lower())
+            expt_info = {
+                # Info from CVs that will be used to check the dataset's time range. 
+                # If any of these are None, that check will be skipped.
+                'start_year': cv_info.start_year,
+                'end_year': cv_info.end_year,
+                'min_number_yrs_per_sim': cv_info.min_number_yrs_per_sim
+            }
+            if expt in config_expt:
+                # If the user has specified any of these in the config_expt, override the CVs.
+                expt_info.update(config_expt[expt])
+
+            dataset_start_year = year_ranges[0,0]
+            dataset_end_year = year_ranges[-1,-1]
+            dataset_total_years = dataset_end_year - dataset_start_year + 1
+            check = []
+            if expt_info['start_year']:
+                # Check that dataset begins in the start year specified in the CVs.
+                check.append(dataset_start_year == expt_info['start_year'])
+                if not check[-1]:
+                    logger.info(f' dataset starts in year {dataset_start_year}, '
+                                f'but should start in year={expt_info["start_year"]}')
+            if expt_info['end_year']:
+                # Check that dataset ends in the end year specified in the CVs, or ends in the
+                # year following that.
+                #
+                # The second case is allowed because times in a file possibly can include the 
+                # first time of the calendar year following the end year of an experiment, for example:
+                #   vas_tpt-h10m-hxy-u_3hr_glb_g150_CanESM6-0-MR_historical_r12i1p1f1_202101010300-202201010000.nc
+                # where the CMIP7 historical experiment ends at the end of 2021.
+                check.append(dataset_end_year == expt_info['end_year'] or dataset_end_year == expt_info['end_year'] + 1)
+                if not check[-1]:
+                    logger.info(f' dataset ends in year {dataset_end_year}, '
+                                f'but should end in year={expt_info["end_year"]}')
+            if expt_info['min_number_yrs_per_sim']:
+                check.append(dataset_total_years >= expt_info['min_number_yrs_per_sim'])
+                if not check[-1]:
+                    logger.info(f' dataset has {dataset_total_years} years, '
+                                f'minimum number of years={expt_info["min_number_yrs_per_sim"]}')
+            if len(check) == 0:
+                raise ValueError(f'No dataset time range checks were applied, is the needed info in the CVs?')
+            return all(check)
+
     else:
         raise ValueError(f'How to check experiment years for {project}?')
 
