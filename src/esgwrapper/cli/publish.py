@@ -31,6 +31,7 @@ from esgwrapper.utils.tools import (load_config_file, init_filter,
                                     check_a4d_validation_status,
                                     data_request_checks, get_dreq_validation_file,
                                     cmip7_compound_name_without_realm,
+                                    cmip6_compound_name,
                                     backup_file)
 
 
@@ -736,13 +737,20 @@ def main():
         failed_variables = set()
         for dataset_id in failed_datasets:
             info = datasets[dataset_id]
-            var_name = cmip7_compound_name_without_realm(info['params'])
+            params = info['params']
+            if project == 'cmip7':
+                var_name = cmip7_compound_name_without_realm(params)
+            elif project == 'cmip6plus':
+                var_name = cmip6_compound_name(params)
+            else:
+                print(f'Skipping variable name determination for project {project}')
+                break
             failed_variables.add(var_name)
         failed_variables = sorted(failed_variables, key=str.lower)
         print(f'These contained {len(failed_variables)} failed variables:')
         for var_name in failed_variables:
             print(f'  {var_name}')
-
+        # Write json file listing failed datasets and variables
         out = OrderedDict({
             'Header' : {
                 'date of run': datetime.now(UTC).strftime(DATE_FORMAT),

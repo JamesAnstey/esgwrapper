@@ -546,6 +546,15 @@ def cmip7_compound_name_without_realm(params: dict[str, str]) -> str:
     return template.format(**params)
 
 
+def cmip6_compound_name(params: dict[str, str]) -> str:
+    '''
+    Return compound name based on table_id and variable_id, as used in CMIP6.
+    This name is intended to uniquely identifies a requested variable (i.e., a CMOR variable).
+    '''
+    template = '{table_id}.{variable_id}'
+    return template.format(**params)
+
+
 def variable_name_from_dataset_id(params: dict[str, str]) -> str:
     '''
     Same info as for cmip7_compound_name_without_realm, but reordered the way it appears in a dataset_id.
