@@ -738,9 +738,28 @@ def main():
             info = datasets[dataset_id]
             var_name = cmip7_compound_name_without_realm(info['params'])
             failed_variables.add(var_name)
+        failed_variables = sorted(failed_variables, key=str.lower)
         print(f'These contained {len(failed_variables)} failed variables:')
-        for var_name in sorted(failed_variables):
+        for var_name in failed_variables:
             print(f'  {var_name}')
+
+        out = OrderedDict({
+            'Header' : {
+                'date of run': datetime.now(UTC).strftime(DATE_FORMAT),
+                'logfile': str(logfile),
+                'time taken (s)': time_taken,
+                'no. of datasets failed to publish': len(failed_datasets),
+                'no. of failed variables': len(failed_variables),
+            },
+            'failed variables': failed_variables,
+            'failed datasets': failed_datasets
+        })
+        outfile = 'failed_datasets.json'
+        with open(outfile, 'w') as f:
+            json.dump(out, f, indent=4)
+            print(f'Wrote {outfile} listing {len(failed_datasets)} failed datasets and {len(failed_variables)} failed variables')
+
 
 if __name__ == '__main__':
     main()
+
