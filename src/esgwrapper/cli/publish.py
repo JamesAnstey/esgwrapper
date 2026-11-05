@@ -680,6 +680,7 @@ def main():
         # Loop over datasets to publish each one
         n = len(datasets)
         k = 0
+        failed_datasets = []
         for dataset_id, info in datasets.items():
             k += 1
             msg = f'Publishing dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})'
@@ -706,6 +707,9 @@ def main():
                 # Write logfile summarizing the results of commands
                 for msg in log_cmds(dataset_id, cmd_results):
                     logger.info(msg)
+                # If publishing failed, add dataset to list of failed datasets
+                if cmd_results[-1]['exit_status'] != 0:
+                    failed_datasets.append(dataset_id)
 
             # If QC report output file was created, move it to a subdir
             qc_report_file = f'{dataset_id}.ccreport'
@@ -713,6 +717,7 @@ def main():
                 if not os.path.exists(QC_REPORTS_DIR):
                     os.makedirs(QC_REPORTS_DIR)
                 shutil.move(qc_report_file, os.path.join(QC_REPORTS_DIR, qc_report_file))
+
 
     time_taken = time.time() - time_taken
     fmt = '%.2f'
@@ -725,6 +730,17 @@ def main():
         Wrote logfile: {logfile}
         '''))
 
+    if do_cmds and len(failed_datasets) > 0:
+        print(f'WARNING: {len(failed_datasets)} datasets failed to publish')
+        # Determine which variables failed, since problems are usually variable-specific
+        failed_variables = set()
+        for dataset_id in failed_datasets:
+            info = datasets[dataset_id]
+            var_name = cmip7_compound_name_without_realm(info['params'])
+            failed_variables.add(var_name)
+        print(f'These contained {len(failed_variables)} failed variables:')
+        for var_name in sorted(failed_variables):
+            print(f'  {var_name}')
 
 if __name__ == '__main__':
     main()

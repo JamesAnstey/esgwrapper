@@ -48,8 +48,12 @@ def parse_args():
 
     parser.add_argument('-m', '--model', action='store_true',
                         help='display stats by model')
+    # parser.add_argument('-p', '--project', type=str, default='cmip7,
+    #                     help='ESGF project')
     parser.add_argument('-v', '--validation', type=str, default=VALIDATION_FILE,
                         help='json file with variable validation statuses to check against published variables')
+    parser.add_argument('-nval', '--no-validation', action='store_true', default=False,
+                        help='disable variable validation')
     parser.add_argument('-i', '--inventory', action='store_true',
                         help='save results in the same json format as inventory.json (does not overwrite input file)')
 
@@ -96,6 +100,9 @@ def main():
         total_size += info['properties']['size']
 
         if get_model_stats:
+            # params = convert_stac_params(info)
+            # breakpoint()
+
             model = info['properties']['cmip7:source_id']
             if model not in model_stats:
                 model_stats[model] = {'total size': 0, 'no. datasets': 0}
@@ -127,7 +134,7 @@ def main():
                 ''')
             print(msg)
 
-    if args.validation:
+    if args.validation and not args.no_validation:
         # Check validation status of published variables
         published_unapproved = defaultdict(list)
         published_older_version = defaultdict(list)

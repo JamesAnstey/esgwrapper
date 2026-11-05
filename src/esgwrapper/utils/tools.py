@@ -417,6 +417,10 @@ def _check_dataset_years(project: str,
         raise ValueError(f'How to check experiment years for {project}?')
 
 
+# def _check_dataset_runid(project: str, dataset_files: list[str], params: dict[str, str], config_expt['check_runid']: dict[str, str]) -> bool:
+
+
+
 def find_datasets(project: str,
                   base_path: str,
                   dataset_path: str,
@@ -489,6 +493,12 @@ def find_datasets(project: str,
                 # If dataset does not contain all expected years, reject it
                 logger.info(f' failed time range checks (see above for why)')
                 reject_dataset = True
+
+            # if 'check_runid' in config_expt:
+            #     if not _check_dataset_runid(project, dataset_files, params, config_expt['check_runid']):
+            #         # If runid in netcdf metadata is not as expected, reject the dataset
+            #         logger.info(f' failed runid verification')
+            #         reject_dataset = True
 
             if reject_dataset:
                 logger.info(f' * REJECTED * {dataset_id}')
