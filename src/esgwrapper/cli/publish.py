@@ -719,6 +719,43 @@ def main():
                     os.makedirs(QC_REPORTS_DIR)
                 shutil.move(qc_report_file, os.path.join(QC_REPORTS_DIR, qc_report_file))
 
+        if do_cmds and len(failed_datasets) > 0:
+            print(f'WARNING: {len(failed_datasets)} datasets failed to publish')
+            # Determine which variables failed, since problems are usually variable-specific
+            failed_variables = set()
+            for dataset_id in failed_datasets:
+                info = datasets[dataset_id]
+                params = info['params']
+                if project == 'cmip7':
+                    var_name = cmip7_compound_name_without_realm(params)
+                elif project == 'cmip6plus':
+                    var_name = cmip6_compound_name(params)
+                else:
+                    print(f'Skipping variable name determination for project {project}')
+                    break
+                failed_variables.add(var_name)
+            failed_variables = sorted(failed_variables, key=str.lower)
+            print(f'These contained {len(failed_variables)} failed variables:')
+            for var_name in failed_variables:
+                print(f'  {var_name}')
+            # Write json file listing failed datasets and variables
+            out = OrderedDict({
+                'Header' : {
+                    'date of run': datetime.now(UTC).strftime(DATE_FORMAT),
+                    'logfile': str(logfile),
+                    'time taken (s)': time_taken,
+                    'no. of datasets failed to publish': len(failed_datasets),
+                    'no. of failed variables': len(failed_variables),
+                },
+                'failed variables': failed_variables,
+                'failed datasets': failed_datasets
+            })
+            outfile = 'failed_datasets.json'
+            with open(outfile, 'w') as f:
+                json.dump(out, f, indent=4)
+                print(f'Wrote {outfile} listing {len(failed_datasets)} failed datasets and {len(failed_variables)} failed variables')
+
+
 
     time_taken = time.time() - time_taken
     fmt = '%.2f'
@@ -730,42 +767,6 @@ def main():
         {time_msg.strip()}
         Wrote logfile: {logfile}
         '''))
-
-    if do_cmds and len(failed_datasets) > 0:
-        print(f'WARNING: {len(failed_datasets)} datasets failed to publish')
-        # Determine which variables failed, since problems are usually variable-specific
-        failed_variables = set()
-        for dataset_id in failed_datasets:
-            info = datasets[dataset_id]
-            params = info['params']
-            if project == 'cmip7':
-                var_name = cmip7_compound_name_without_realm(params)
-            elif project == 'cmip6plus':
-                var_name = cmip6_compound_name(params)
-            else:
-                print(f'Skipping variable name determination for project {project}')
-                break
-            failed_variables.add(var_name)
-        failed_variables = sorted(failed_variables, key=str.lower)
-        print(f'These contained {len(failed_variables)} failed variables:')
-        for var_name in failed_variables:
-            print(f'  {var_name}')
-        # Write json file listing failed datasets and variables
-        out = OrderedDict({
-            'Header' : {
-                'date of run': datetime.now(UTC).strftime(DATE_FORMAT),
-                'logfile': str(logfile),
-                'time taken (s)': time_taken,
-                'no. of datasets failed to publish': len(failed_datasets),
-                'no. of failed variables': len(failed_variables),
-            },
-            'failed variables': failed_variables,
-            'failed datasets': failed_datasets
-        })
-        outfile = 'failed_datasets.json'
-        with open(outfile, 'w') as f:
-            json.dump(out, f, indent=4)
-            print(f'Wrote {outfile} listing {len(failed_datasets)} failed datasets and {len(failed_variables)} failed variables')
 
 
 if __name__ == '__main__':
