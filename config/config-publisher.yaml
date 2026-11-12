@@ -15,7 +15,8 @@ mapfile:
   clobber: False
 
 publish:
-  esgcet_config_file: esg_west.yaml
+  esgcet_config_file: esg_east.yaml
+  # esgcet_config_file: esg_west.yaml
   venv:
     - /home/scrd106/rja001/venv/pub_test
     - /home/scrd106/rja001/venv/esgpub

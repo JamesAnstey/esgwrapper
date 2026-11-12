@@ -755,7 +755,7 @@ def main():
                 json.dump(out, f, indent=4)
                 print(f'Wrote {outfile} listing {len(failed_datasets)} failed datasets and {len(failed_variables)} failed variables')
 
-
+    ##############################################################################
 
     time_taken = time.time() - time_taken
     fmt = '%.2f'
