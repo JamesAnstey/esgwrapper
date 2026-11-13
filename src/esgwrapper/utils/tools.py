@@ -11,6 +11,7 @@ import yaml
 from collections import OrderedDict, defaultdict
 from datetime import datetime, UTC
 from pathlib import Path
+from xarray import open_dataset
 
 import esgvoc.api as ev
 from esgvoc.apps.drs.validator import DrsValidator
@@ -417,8 +418,40 @@ def _check_dataset_years(project: str,
         raise ValueError(f'How to check experiment years for {project}?')
 
 
-# def _check_dataset_runid(project: str, dataset_files: list[str], params: dict[str, str], config_expt['check_runid']: dict[str, str]) -> bool:
-
+def _check_dataset_runid(dataset_files: list[str],
+                         dataset_path: str,
+                         params: dict[str, str],
+                         check_runid: dict[str, str],
+                         ) -> bool:
+    '''
+    Confirm runid in netcdf metadata matches the expected runid for the experiment. 
+    This check is enabled by including a "check_runid" section in the config-experiment.yaml file. 
+    Example:
+        check_runid:
+          CanESM5-1.amip.r1i1p2f1: v51p2-c7amip-r1
+          CanESM5-1.amip.r2i1p2f1: v51p2-c7amip-r2a
+          CanESM5-1.amip.r3i1p2f1: v51p2-c7amip-r3a
+    The check is only done for model runs that are listed in that section. 
+    If a model run is not listed, it is assumed to be correct and no check is done.
+    The check slows down the inventory a fair bit, so should be used sparingly.
+    For example, for three CanESM5-1 amip runs, the inventory took ~300 s, compared to ~15 s without checking runids.
+    '''
+    model_run = '{source_id}.{experiment_id}.{variant_label}'.format(**params)
+    if model_run in check_runid:
+        # If the user has specified an expected runid for this model run, check that the runid in the netcdf files matches it.
+        expected_runid = check_runid[model_run]
+        check = []
+        for filename in dataset_files:
+            filepath = Path(dataset_path) / filename
+            ds = open_dataset(filepath, decode_times=False)
+            runid = ds.CCCma_runid
+            check.append(runid == expected_runid)
+            ds.close()
+        return all(check)
+    else:
+        # If the user has not specified an expected runid for this model run, don't check it.
+        # (In other words, assume it's correct.)
+        return True
 
 
 def find_datasets(project: str,
@@ -494,11 +527,11 @@ def find_datasets(project: str,
                 logger.info(f' failed time range checks (see above for why)')
                 reject_dataset = True
 
-            # if 'check_runid' in config_expt:
-            #     if not _check_dataset_runid(project, dataset_files, params, config_expt['check_runid']):
-            #         # If runid in netcdf metadata is not as expected, reject the dataset
-            #         logger.info(f' failed runid verification')
-            #         reject_dataset = True
+            if 'check_runid' in config_expt:
+                if not _check_dataset_runid(dataset_files, dirpath, params, config_expt['check_runid']):
+                    # If runid in netcdf metadata is not as expected, reject the dataset
+                    logger.info(f' failed runid verification')
+                    reject_dataset = True
 
             if reject_dataset:
                 logger.info(f' * REJECTED * {dataset_id}')
