@@ -1,0 +1,17 @@
+# Optionally specifiy experiment attributes, if needed, to check them when doing inventory.
+# Examples:
+# - start amip in 1950 instead of 1979
+# - specify start/end years for piControl to ensure consistent set of years published for a given model
+
+amip:
+  start_timestamp: 1950-01-01 00:00:00
+  
+
+check_runid:
+  # Option to confirm runid by reading the netcdf metadata of each file.
+  # Should not normally be needed, but occasionally useful.
+  # Significantly slows down the inventory (10-20x).
+  CanESM5-1.amip.r1i1p2f1: v51p2-c7amip-r1
+  CanESM5-1.amip.r2i1p2f1: v51p2-c7amip-r2a
+  CanESM5-1.amip.r3i1p2f1: v51p2-c7amip-r3a
+
