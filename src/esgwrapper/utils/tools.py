@@ -424,7 +424,7 @@ def _check_dataset_runid(dataset_files: list[str],
                          check_runid: dict[str, str],
                          ) -> bool:
     '''
-    Confirm runid in netcdf metadata matches the expected runid for the experiment. 
+    Confirm that CCCma runid in netcdf metadata matches the expected runid for the experiment. 
     This check is enabled by including a "check_runid" section in the config-experiment.yaml file. 
     Example:
         check_runid:
@@ -527,9 +527,9 @@ def find_datasets(project: str,
                 logger.info(f' failed time range checks (see above for why)')
                 reject_dataset = True
 
-            if 'check_runid' in config_expt:
+            if 'check_runid' in config_expt and config_expt['check_runid']:
                 if not _check_dataset_runid(dataset_files, dirpath, params, config_expt['check_runid']):
-                    # If runid in netcdf metadata is not as expected, reject the dataset
+                    # If CCCma runid in netcdf metadata is not as expected, reject the dataset
                     logger.info(f' failed runid verification')
                     reject_dataset = True
 
