@@ -5,11 +5,16 @@ On science (ECCC HPC) run:
 ```bash
 python get_validation_statuses.py
 ```
-This queries the validation database and writes csv files with statuses for each model in the current directory.
+This queries the validation database and writes `.csv` files with statuses for each model in the current directory.
 It then reads these files and produces `validation_status.json` which contains the approval status and other metadata of all variables for each model.
-It requires `postgresql_export.sh` and `download_validation_files.sh` in the current directory.
 
-To write `validation_status.json` using existing csv files in the current directory, i.e. without querying the database, invoke with the `-ndb` flag.
+`get_validation_statuses.py` makes use of other scripts in the current dir, depending on `CSV_VERSION` set in the script.
+For `CSV_VERSION = 1` it requires `postgresql_export.sh` and `download_validation_files.sh`.
+For `CSV_VERSION = 2` it requires `download_database_table.py`.
+`CSV_VERSION = 2` should be used since these `.csv` files include the dataset version (e.g. `v20260629`).
+Comments in `get_validation_statuses.py` give further details.
+
+To write `validation_status.json` using existing csv files in the current directory, without querying the database, invoke with the `-ndb` flag.
 
 `validation_status.json` can be used by the publishing software to confirm a varibale is approved before publishing.
 Its header has some useful info:
@@ -30,7 +35,7 @@ Its header has some useful info:
             },
 ```
 `date run` indicates when `get_validation_statuses.py` was run.
-`provenance file timestamp` indicates when the csv file, `provenance file`, was generated from the database (i.e., when the csv file was last modified; it should not be edited manually).
+`provenance file timestamp` indicates when the csv file, `provenance file`, was generated from the database, which is assumed to be when the csv file was last modified (the csv file should not be edited manually).
 
 Information about each variable is stored as follows:
 ```json
@@ -38,6 +43,7 @@ Information about each variable is stored as follows:
         "CanESM5-1": {
             "aerosol.abs550aer.tavg-u-hxy-u.mon.glb": {
                 "aggregate_status": "approved",
+                "version": "v20190429",
                 "source_id": "CanESM5-1",
                 "cmip7_compound_name": "aerosol.abs550aer.tavg-u-hxy-u.mon.glb",
                 "realm": "aerosol",
