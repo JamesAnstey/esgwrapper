@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import csv
 import json
 
 from collections import OrderedDict, defaultdict
@@ -31,6 +32,8 @@ def parse_args():
     parser.add_argument('-core', '--BCVs', action='store_true', default=False,
                         help='shorthand for applying the -vars option with the list of BCVs' +
                         ' (Baseline Climate Variables, the Core priority variables of the CMIP7 DR)')
+    parser.add_argument('-csv', '--write-csv', action='store_true', default=False,
+                        help='write tables as csv files (one per table) in the current directory')
 
     return parser.parse_args()
 
@@ -231,8 +234,14 @@ def main():
             print(f'\nTable: {table_type}, Axes: {table["row"]} vs {table["column"]}')
             print(tabulate(rows, headers=headers))
 
-        # TODO: add csv output option
-
+            # Write table to csv file, if requested
+            if args.write_csv:
+                outfile = f'{table_type}_{table["row"]}_vs_{table["column"]}.csv'
+                with open(outfile, 'w') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(headers)
+                    writer.writerows(rows)
+                    print(f'Wrote table to {outfile}')
 
 if __name__ == '__main__':
     main()
