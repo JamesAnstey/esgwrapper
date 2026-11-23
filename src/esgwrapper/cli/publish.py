@@ -32,7 +32,7 @@ from esgwrapper.utils.tools import (load_config_file, init_filter,
                                     data_request_checks, get_dreq_validation_file,
                                     cmip7_compound_name_without_realm,
                                     cmip6_compound_name,
-                                    backup_file)
+                                    backup_file, check_mapfile)
 
 
 DATE_FORMAT = '%d %b %Y, %H:%M:%S UTC'
@@ -699,6 +699,9 @@ def main():
                 cmd_args['esgcet_config_file'] = args.esgcet_config_file
             if not os.path.exists(cmd_args['mapfile']):
                 print('Mapfile not found: ' + cmd_args['mapfile'])
+                continue
+            if not check_mapfile(cmd_args['mapfile'], info):
+                print('Mapfile validation failed: ' + cmd_args['mapfile'])
                 continue
 
             # Run commands to publish this dataset

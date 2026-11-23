@@ -662,6 +662,64 @@ def check_a4d_validation_status(datasets, validation_file):
         logger.info(f' * VALIDATION FAILURE * {msg}')
 
 
+def check_mapfile(mapfile: str | Path, dataset_info: dict) -> bool:
+    '''
+    Check mapfile contents are current for the files in a dataset directory.
+    Purpose is to avoid accidentally publishing a dataset using an out-of-date mapfile.
+    A mapfile could potentially be out of date if it was generated prior to updating a dataset.
+    Since the dataset version string should be updated when a dataset is changed, this should not be able to happen.
+    (Recalling that a mapfile name and contents include the version string.)
+    But paranoia is reassuring, so let's check to be sure.
+
+    The mapfile is validated by comparing the size and modification time that it lists for each file with the actual
+    size and modification time of the file on disk, determined here by os.stat().
+
+    The chksum is not checked. It would be easy to do here. But doing that would make publishing much more
+    time consuming. If size and modification time agree then we can be pretty confident the chksum will too,
+    assuming that the original mapfile-generating script computed it correctly.
+
+    Arguments
+    ---------
+    mapfile: str or Path
+        Path to mapfile
+    dataset_info: dict
+        Dict from inventory file. Provides dataset path and names of nc files in the dataset.
+
+    Returns
+    -------
+    True if all mapfile checks pass, False if any of them fail.
+    '''
+    # Read mapfile contents into a dict keyed by filename.
+    with open(mapfile, 'r') as f:
+        lines = f.readlines()
+    mapfile_files = {}
+    for line in lines:
+        line = [s.strip() for s in line.split('|')]
+        filename = Path(line[1]).name
+        mapfile_files[filename] = {
+            'size': int(line[2]),
+            'mod_time': float(line[3].split('=')[-1])
+        }
+    # Get dataset path from the dataset_info dict. It should be valid if this is running on the machine where the
+    # inventory file was generated, which should always be the case.
+    dataset_path = dataset_info['path']
+    # For each file listed in the inventory, check that its size and modification time agree with what the mapfile says they should be.
+    check = []
+    for filename in dataset_info['filenames']:
+        filepath = Path(dataset_path) / filename
+        stat = os.stat(filepath)
+        size = stat.st_size
+        mod_time = stat.st_mtime
+        mapfile_info = mapfile_files[filename]
+        check.append(size == mapfile_info['size'])
+        check.append(mod_time == mapfile_info['mod_time'])
+    if all(check):
+        return True
+    else:
+        logger.info(f' Mapfile validation failed')
+        return False
+
+
 def publication_checks(datasets, validation_file):
     '''
     Check CMIP6 Stamp of Approval. Superseded for CMIP7 by check_a4d_validation_status().
