@@ -31,6 +31,8 @@ def parse_args():
                         help='project to search')
     parser.add_argument('-m', '--models', type=str, default='CanESM5-1,CanESM6-0-MR',
                         help='comma-separated list of models to search for')
+    parser.add_argument('-r', '--retracted', action='store_true',
+                        help='search for retracted datasets')
 
     args = parser.parse_args()
     return args
@@ -45,7 +47,9 @@ def main():
     print(f'Starting ESGF search {date_str}')
     time_taken = time.time() 
 
-    base_query = {"collections": [STAC_COLLECTION[project]]}
+    base_query = {
+        "collections": [STAC_COLLECTION[project]],
+    }
 
     # models = []
     # models.append('CanESM5-1')
@@ -85,7 +89,18 @@ def main():
         if args.all:
             # Only specify the collection, ignore anything else
             query = deepcopy(base_query)
-        
+
+        if args.retracted:
+            if "query" not in query:
+                query["query"] = {}
+            query["query"].update({
+                "retracted": {"eq": True},
+            })
+
+        # query["query"] = {
+        #     "cmip7:pid": {"eq": "hdl:21.14107/f85400ec-8eab-36d9-98f5-332782fec2d3"}
+        # }
+
         print(f'Searching {url_endpoint} for {query}')
         search = client.search(**query)
 
@@ -105,6 +120,8 @@ def main():
     # outfile_prefix = 'stac_test'
     if args.all:
         outfile_prefix = 'stac_found_all'
+    if args.retracted:
+        outfile_prefix += '_retracted'
 
     # Output txt file listing dataset ids
     outfile = f'{outfile_prefix}_{index}_{project}.txt'
