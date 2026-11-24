@@ -37,6 +37,8 @@ PARAMS_MAP = {
     })
 }
 
+IGNORE_RETRACTED_DATASETS = True
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -50,7 +52,7 @@ def parse_args():
                         help='display stats by model')
     # parser.add_argument('-p', '--project', type=str, default='cmip7,
     #                     help='ESGF project')
-    parser.add_argument('-v', '--validation', type=str, default=VALIDATION_FILE,
+    parser.add_argument('-vf', '--validation-file', type=str, default=VALIDATION_FILE,
                         help='json file with variable validation statuses to check against published variables')
     parser.add_argument('-nval', '--no-validation', action='store_true', default=False,
                         help='disable variable validation')
@@ -96,7 +98,13 @@ def main():
 
     n = len(datasets)
     total_size = 0
+    exclude = []
     for dataset_id, info in datasets.items():
+        if IGNORE_RETRACTED_DATASETS:
+            if info['properties']['retracted']:
+                exclude.append(dataset_id)
+                continue
+
         total_size += info['properties']['size']
 
         if get_model_stats:
@@ -108,6 +116,10 @@ def main():
                 model_stats[model] = {'total size': 0, 'no. datasets': 0}
             model_stats[model]['total size'] += info['properties']['size']
             model_stats[model]['no. datasets'] += 1
+
+    for dataset_id in exclude:
+        datasets.pop(dataset_id)
+    del exclude
 
     total_size_str = file_size_str(total_size)
     msg = dedent(f'''
@@ -134,16 +146,16 @@ def main():
                 ''')
             print(msg)
 
-    if args.validation and not args.no_validation:
+    if args.validation_file and not args.no_validation:
         # Check validation status of published variables
         published_unapproved = defaultdict(list)
         published_older_version = defaultdict(list)
         published_newer_version = defaultdict(list)
 
         # Load validation status json file, which is produced by get_validation_statuses.py
-        with open(args.validation) as f:
+        with open(args.validation_file) as f:
             d = json.load(f)
-            print(f'Loaded validation statuses from:\n  {args.validation}')
+            print(f'Loaded validation statuses from:\n  {args.validation_file}')
             variable_status = d['model']
 
         # Loop over datasets found in the stac search
@@ -266,6 +278,7 @@ def main():
         config_pub = load_config_file(CONFIG_FILES_DIR / 'config-publisher.yaml')
         for dataset_id in dataset_ids:
             stac_dataset_info = datasets[dataset_id]
+
             # Get dataset DRS attributes, and convert the names to the exact Global Attribute names
             params = convert_stac_params(stac_dataset_info)
             # Confirm it worked be reconstructing the dataset_id
