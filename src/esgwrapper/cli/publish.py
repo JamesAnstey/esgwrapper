@@ -757,6 +757,12 @@ def main():
             with open(outfile, 'w') as f:
                 json.dump(out, f, indent=4)
                 print(f'Wrote {outfile} listing {len(failed_datasets)} failed datasets and {len(failed_variables)} failed variables')
+            # Write txt file listing the dataset id's of failed datasets
+            # (this makes it easy to retry them by rerunning with the -id option)
+            outfile = 'failed_datasets.txt'
+            with open(outfile, 'w') as f:
+                f.write('\n'.join(failed_datasets))
+                print(f'Wrote {outfile}')
 
     ##############################################################################
 
