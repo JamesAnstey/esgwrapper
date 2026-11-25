@@ -682,6 +682,7 @@ def main():
         n = len(datasets)
         k = 0
         failed_datasets = []
+        succeeded_datasets = []
         for dataset_id, info in datasets.items():
             k += 1
             msg = f'Publishing dataset ({k} of {n}): {dataset_id} ({info["size (human readable)"]})'
@@ -712,15 +713,19 @@ def main():
                 for msg in log_cmds(dataset_id, cmd_results):
                     logger.info(msg)
                 # If publishing failed, add dataset to list of failed datasets
-                if cmd_results[-1]['exit_status'] != 0:
+                if cmd_results[-1]['exit_status'] == 0:
+                    succeeded_datasets.append(dataset_id)
+                else:
                     failed_datasets.append(dataset_id)
 
-            # If QC report output file was created, move it to a subdir
+            # If QC report output file was created, move it to a subdir to avoid cluttering up the work dir
             qc_report_file = f'{dataset_id}.ccreport'
             if os.path.exists(qc_report_file):
                 if not os.path.exists(QC_REPORTS_DIR):
                     os.makedirs(QC_REPORTS_DIR)
                 shutil.move(qc_report_file, os.path.join(QC_REPORTS_DIR, qc_report_file))
+
+        print(f'\nPublishing succeeded for {len(succeeded_datasets)} datasets')
 
         if do_cmds and len(failed_datasets) > 0:
             print(f'WARNING: {len(failed_datasets)} datasets failed to publish')
