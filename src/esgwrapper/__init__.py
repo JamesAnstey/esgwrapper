@@ -18,5 +18,6 @@ SEND_STDOUT_TO_LOGFILE = True
 
 STAC_COLLECTION = {
     'cmip7': 'CMIP7',
-    'cmip6plus': 'CMIP6Plus'
+    'cmip6plus': 'CMIP6Plus',
+    'cordex-cmip6': 'CORDEX-CMIP6'
 }

@@ -27,7 +27,7 @@ def parse_args():
 
     parser.add_argument('-a', '--all', action='store_true',
                         help='return whole catalogue')
-    parser.add_argument('-p', '--project', type=str, default='cmip7', choices=['cmip7', 'cmip6plus'],
+    parser.add_argument('-p', '--project', type=str, default='cmip7', choices=['cmip7', 'cmip6plus', 'cordex-cmip6'],
                         help='project to search')
     parser.add_argument('-m', '--models', type=str, default='CanESM5-1,CanESM6-0-MR',
                         help='comma-separated list of models to search for')
